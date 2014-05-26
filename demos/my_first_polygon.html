@@ -1,0 +1,47 @@
+<!DOCTYPE>
+<HTML>
+	<HEAD>
+		<TITLE>My First Polygon</TITLE>
+		<META NAME="Generator" CONTENT="EditPlus">
+		<META NAME="Author" CONTENT="">
+		<META NAME="Keywords" CONTENT="">
+		<META NAME="Description" CONTENT="">
+	</HEAD>
+
+	<BODY>
+		<div style="width:400px; margin:auto; position:relative; font-size: 9pt; color: #777777;">
+			<canvas id="cv" style="border: 1px solid;" width="400" height="400" ></canvas>
+		</div>
+		<script type="text/javascript" src="../js/tinygl.js"></script>
+		<script type="text/javascript">
+			var canvas = document.getElementById('cv');
+			var gl = canvas.getContext('experimental-tinygl');
+
+			//gl.debug();
+
+			gl.viewport(0, 0, canvas.width, canvas.height);
+
+			gl.clearColor(0, 0, 0, 0)
+			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+			gl.matrixMode(gl.PROJECTION);
+			gl.loadIdentity();
+			gl.frustum(-2.0, 2.0, -2.0, 2.0, 6.0, 20.0);
+			gl.matrixMode(gl.MODELVIEW);
+			gl.loadIdentity();
+			gl.translatef(0.0, 0.0, -16.0);
+
+			gl.color3f(1, 0, 0);
+			gl.begin(gl.POLYGON);
+				gl.vertex3f(-1, -1, 0);
+				gl.vertex3f( 1, -1, 0);
+				gl.vertex3f( 1,  1, 0);
+				gl.vertex3f(-1,  1, 0);
+			gl.end();
+
+			gl.flush();
+
+			gl.swapBuffers();
+		</script>
+	</BODY>
+</HTML>
