@@ -9,27 +9,27 @@ Getting Started
 
 This library is in a single JavaScript source file 'tinygl.js'. It should be included first:
 
-'''html
+```html
 <script type="text/javascript" src="tinygl.js"></script>
-'''
+```
 
 Then, assuming a canvas element is already declared in the HTML, we get TinyGL.js's rendering context using the keyword "experimental-tinygl":
 
-'''js
+```js
 var canvas = document.getElementById(canvas_id);
 var gl = canvas.getContext('experimental-tinygl');
-'''
+```
 
 The semantics is almost the same with what we do for a Canvas2D or WebGL context. Alternatively, the following code produces the same result:
 
-'''js
+```js
 var canvas = document.getElementById(canvas_id);
 var gl = new TinyGLRenderingContext(canvas);
-'''
+```
 
 Now that we have the rendering context, let's begin with some simple primitives:
 
-'''js
+```js
 gl.viewport(0, 0, canvas.width, canvas.height);
 
 gl.clearColor(0, 0, 0, 0);
@@ -52,7 +52,7 @@ gl.end();
 
 gl.flush();
 gl.swapBuffers();
-'''
+```
 
 This is our first polygon with TinyGL.js :-)
 
