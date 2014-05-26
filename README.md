@@ -1,7 +1,7 @@
 TinyGL.js
 =========
 
-TinyGL.js a JavaScript library providing a subset of OpenGL 1.1 compatible API, which can be used to make 3D graphics on canvas. TinyGL.js is based upon TinyGL's implementation which was written in C and compiled to JavaScript via Emscripten. It only uses software rasterization and does not require WebGL to run.
+TinyGL.js a JavaScript library providing a subset of OpenGL 1.1 compatible API, which can be used to make 3D graphics on canvas. TinyGL.js is based upon TinyGL's implementation written in C and compiled to JavaScript via Emscripten. It only uses software rasterization and does not require WebGL to run.
 Current implementation is based on TinyGL 0.4.
 
 Getting Started
@@ -59,4 +59,4 @@ This is our first polygon with TinyGL.js :-)
 Browser Requirements
 --------------------
 
-TinyGL.js uses [Canvas](http://caniuse.com/#feat=canvas) and  [Typed Arrays](http://caniuse.com/#feat=typedarrays). Make sure your browser supports these features to run applications using TinyGL.js.
+TinyGL.js uses [Canvas](http://caniuse.com/#feat=canvas) and  [Typed Arrays](http://caniuse.com/#feat=typedarrays). Make sure your browser supports these features to run codes with TinyGL.js.
