@@ -307,6 +307,11 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 		return Module._malloc(new_framebuf_size);
 	}
 
+	function calcAdjustedWidth(width) {
+		// TinyGL requires the width of a framebuffer to be multiples of 4
+		return width & ~3;
+	}
+
 	/**
 	 * @class 
 	 */
@@ -314,10 +319,13 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 		this._canvas = canvas;
 		this._attribs = attribs;
 		this._surface = canvas.getContext('2d');
-		this._back_data = this._surface.createImageData(canvas.width, canvas.height);
 
-		this._frame_buf_ptr = reallocateFramebuffer(canvas.width, canvas.height, 0);
-		this._tgl_ctx = createTGLContext(canvas.width, canvas.height, this._frame_buf_ptr);
+		var w = calcAdjustedWidth(canvas.width);
+		var h = canvas.height;
+
+		this._back_data = this._surface.createImageData(w, h);
+		this._frame_buf_ptr = reallocateFramebuffer(w, h, 0);
+		this._tgl_ctx = createTGLContext(w, h, this._frame_buf_ptr);
 
 		this._is_select_mode = false;
 		this._select_output_buf = null;
@@ -1342,6 +1350,28 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 
 		viewport: function(x, y, width, height) {
 			_ostgl_make_current(this._tgl_ctx, 0);
+
+			// calculate new framebuffer dimensions from the given viewport
+			var req_framebuf_width  = calcAdjustedWidth(x + width);
+			var req_framebuf_height = y + height;
+
+			// resize and reallocate framebuffer as well as imageData if necessary
+			if( req_framebuf_width != this._back_data.width || 
+				req_framebuf_height != this._back_data.height ) {
+				this._frame_buf_ptr = reallocateFramebuffer(req_framebuf_width, req_framebuf_height, this._frame_buf_ptr);
+
+				var framebuf_ptr_arr_ptr = Module._malloc(BYTES_PER_UINT32);
+				Module.setValue(framebuf_ptr_arr_ptr, this._frame_buf_ptr, 'i32');
+				_ostgl_resize(this._tgl_ctx, req_framebuf_width, req_framebuf_height, framebuf_ptr_arr_ptr);
+				Module._free(framebuf_ptr_arr_ptr);
+
+				this._back_data = this._surface.createImageData(req_framebuf_width, req_framebuf_height);
+			}
+
+			// calculate the adjusted width and height of the viewport
+			width  = req_framebuf_width - x;
+			height = req_framebuf_height - y;
+
 			_glViewport(x, y, width, height);
 		}, 
 
@@ -1671,12 +1701,30 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 
 			// update canvas display
 			this._surface.putImageData(this._back_data, 0, 0);
+
+			// in case that the width of the canvas is not multiples of 4, we simply repeat 
+			// the last column in the framebuffer to the remained columns on canvas
+			//TODO: any better solution?
+			if (this._canvas.width > this._back_data.width) {
+				var oddment = this._canvas.width - this._back_data.width;
+				this._surface.drawImage(this._canvas, 
+					this._back_data.width - 1, 0, 1, this._back_data.height, 
+					this._back_data.width, 0, oddment, this._back_data.height);
+			}
 		}
 
 	};
 
 	/*
-	 * 
+	 * Replace the default HTMLCanvasElement.prototype.getContext() method with our homemade 
+	 * implementation, so that a TinyGL rendering context can be fetched using the following 
+	 * semantics: 
+	 *
+	 *   var canvas = document.getElementById('canvas_id');
+	 *   var gl = canvas.getContext('experimental-tinygl');
+	 *   ...
+	 *
+	 * just as what we do for a canvas2D or a WebGL context.
 	 */
 	if ((typeof HTMLCanvasElement) != 'undefined') {
 		try {
