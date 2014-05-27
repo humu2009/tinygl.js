@@ -1,0 +1,129 @@
+<!DOCTYPE>
+<HTML>
+	<HEAD>
+		<TITLE>Textures</TITLE>
+		<META NAME="Generator" CONTENT="EditPlus">
+		<META NAME="Author" CONTENT="">
+		<META NAME="Keywords" CONTENT="">
+		<META NAME="Description" CONTENT="">
+	</HEAD>
+
+	<BODY>
+		<div style="width:400px; margin:auto; position:relative; font-size: 9pt; color: #777777;">
+			<canvas id="cv" style="border: 1px solid;" width="400" height="400" ></canvas>
+		</div>
+		<script type="text/javascript" src="../js/tinygl.js"></script>
+		<script type="text/javascript">
+			var canvas = document.getElementById('cv');
+			var gl = canvas.getContext('experimental-tinygl');
+
+			var Angle = 0.0;
+			var texture_ids;
+
+			function init() {
+				gl.enable(gl.DEPTH_TEST);
+
+				/* Setup texturing */
+				gl.texEnvi(gl.TEXTURE_ENV, gl.TEXTURE_ENV_MODE, gl.DECAL);
+				gl.hint(gl.PERSPECTIVE_CORRECTION_HINT, gl.FASTEST);
+
+				/* generate texture object IDs */
+				texture_ids = gl.genTextures(2);
+
+				bind_texture(texture_ids[0],'resource/poster1.jpg');
+				bind_texture(texture_ids[1],'resource/poster2.jpg');
+			}
+
+			function reshape(w, h) {
+				gl.viewport(0, 0, w, h);
+				gl.matrixMode(gl.PROJECTION);
+				gl.loadIdentity();
+				gl.frustum(-2.0, 2.0, -2.0, 2.0, 6.0, 20.0);
+				gl.matrixMode(gl.MODELVIEW);
+				gl.loadIdentity();
+				gl.translatef(0.0, 0.0, -8.0);
+			}
+
+			function draw() {
+				gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
+
+				gl.color3f(1.0, 1.0, 1.0);
+
+				/* draw first polygon */
+				gl.pushMatrix();
+				gl.translatef(-1.0, 0.0, 0.0);
+				gl.rotatef(Angle, 0.0, 0.0, 1.0);
+				gl.bindTexture(gl.TEXTURE_2D, texture_ids[0]);
+
+				gl.enable(gl.TEXTURE_2D);
+				gl.begin(gl.QUADS);
+				gl.texCoord2f(0.0, 1.0);
+				gl.vertex2f(-1.0, -1.0);
+				gl.texCoord2f(1.0, 1.0);
+				gl.vertex2f(1.0, -1.0);
+				gl.texCoord2f(1.0, 0.0);
+				gl.vertex2f(1.0, 1.0);
+				gl.texCoord2f(0.0, 0.0);
+				gl.vertex2f(-1.0, 1.0);
+				gl.end();
+				gl.disable(gl.TEXTURE_2D);
+				gl.popMatrix();
+
+				/* draw second polygon */
+				gl.pushMatrix();
+				gl.translatef(1.0, 0.0, 0.0);
+				gl.rotatef(Angle - 90.0, 0.0, 1.0, 0.0);
+
+				gl.bindTexture(gl.TEXTURE_2D, texture_ids[1]);
+
+				gl.enable(gl.TEXTURE_2D);
+				gl.begin(gl.QUADS);
+				gl.texCoord2f(0.0, 1.0);
+				gl.vertex2f(-1.0, -1.0);
+				gl.texCoord2f(1.0, 1.0);
+				gl.vertex2f(1.0, -1.0);
+				gl.texCoord2f(1.0, 0.0);
+				gl.vertex2f(1.0, 1.0);
+				gl.texCoord2f(0.0, 0.0);
+				gl.vertex2f(-1.0, 1.0);
+				gl.end();
+				gl.disable(gl.TEXTURE_2D);
+
+				gl.popMatrix();
+
+				gl.swapBuffers();
+			}
+
+			function loop() {
+				tick();
+			}
+
+			function tick() {
+				Angle += 2.0;
+				draw();
+				setTimeout(tick, 33/* 30 fps is required */);
+			}
+
+			function bind_texture(id, url) {
+				var img = new Image;
+				img.onload = function() {
+					gl.bindTexture(gl.TEXTURE_2D, id);
+					gl.texImage2D(gl.TEXTURE_2D, 0, 3, gl.RGB, gl.UNSIGNED_BYTE, this);
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+				};
+				img.src = url;
+			}
+
+			function main() {
+				init();
+				reshape(canvas.width, canvas.height);
+				loop();
+			}
+
+			main();
+		</script>
+	</BODY>
+</HTML>

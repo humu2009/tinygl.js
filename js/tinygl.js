@@ -312,6 +312,47 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 		return width & ~3;
 	}
 
+	var util_canvas = null;
+
+	function getUtilCanvas(width, height) {
+		var isClean = false;
+		if (!util_canvas) {
+			isClean = true;
+			if ((typeof document) != 'undefined')
+				util_canvas = document.createElement('canvas');
+		}
+
+		if (!util_canvas)
+			return null;
+
+		if (util_canvas.width != width || util_canvas.height != height) {
+			util_canvas.width  = width;
+			util_canvas.height = height;
+			isClean = true;
+		}
+
+		if (!isClean) {
+			var ctx2d = util_canvas.getContext('2d');
+			ctx2d.clearRect(0, 0, width, height);
+		}
+
+		return util_canvas;
+	}
+
+	function grabPixelsRGBToUint8Array(canvas) {
+		var ctx2d = canvas.getContext('2d');
+		var imgData = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
+		var data = imgData.data;
+		var pixels = new Uint8Array(canvas.width * canvas.height * 3);
+		for (var i=0, j=0, k=0, l=data.length>>2; i<l; i++, j+=3, k+=4) {
+			pixels[j    ] = data[k    ];
+			pixels[j + 1] = data[k + 1];
+			pixels[j + 2] = data[k + 2];
+		}
+		return pixels;
+	}
+
+
 	/**
 	 * @class 
 	 */
@@ -1521,12 +1562,61 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 		}, 
 		
 		texImage2D: function(target, level, components, width, height, border, format, type, pixels) {
-			var isTypedArr = (typeof pixels.buffer) != 'undefined';
-			var buf_ptr = Module._malloc(isTypedArr ? pixels.length * pixels.BYTES_PER_ELEMENT : pixels.length);
-			Module.HEAPU8.set(isTypedArr ? (new Uint8Array(pixels.buffer)) : pixels, buf_ptr);
 			_ostgl_make_current(this._tgl_ctx, 0);
-			_glTexImage2D(target, level, components, width, height, border, format, type, buf_ptr);
-			Module._free(buf_ptr);
+
+			if (arguments.length == 9) {
+				/*
+				 * Signature 1: 
+				 *
+				 *   texImage2D(target, level, components, width, height, border, format, type, pixels)
+				 *
+				 * where pixels can be an array or a typed array.
+				 */
+				var isTypedArray = (typeof pixels.buffer) != 'undefined';
+				var buf_ptr = Module._malloc(isTypedArray ? pixels.length * pixels.BYTES_PER_ELEMENT : pixels.length);
+				Module.HEAPU8.set(isTypedArray ? (new Uint8Array(pixels.buffer)) : pixels, buf_ptr);
+				_glTexImage2D(target, level, components, width, height, border, format, type, buf_ptr);
+				Module._free(buf_ptr);
+			} else if (arguments.length == 6) {
+				/*
+				 * Signature 2: 
+				 *
+				 *   texImage2D(target, level, components, format, type, domElement)
+				 * 
+				 * where domElement can be either <img>, <video> or <canvas>.
+				 */
+				var domElement = arguments[5];
+				var elem_type = '';
+				if ((typeof HTMLImageElement) != 'undefined' && (domElement instanceof HTMLImageElement)) {
+					elem_type = 'image';
+				} else if ((typeof HTMLVideoElement) != 'undefined' && (domElement instanceof HTMLVideoElement)) {
+					elem_type = 'video';
+				} else if ((typeof HTMLCanvasElement) != 'undefined' && (domElement instanceof HTMLCanvasElement)) {
+					elem_type = 'canvas';
+				}
+
+				var cv = null;
+				switch (elem_type) {
+				case 'image':
+				case 'video':
+					cv = getUtilCanvas(/*domElement.width, domElement.height*/ 256, 256);
+					var ctx2d = cv.getContext('2d');
+					ctx2d.drawImage(domElement, 0, 0, cv.width, cv.height);
+					break;
+				case 'canvas':
+					cv = domElement;
+					break;
+				default:
+					//TODO: log warnings for the wrong input?
+					return;
+				}
+
+				var pixels = grabPixelsRGBToUint8Array(cv);
+				var buf_ptr = Module._malloc(pixels.length);
+				Module.HEAPU8.set(pixels, buf_ptr);
+				_glTexImage2D(target, level, 3, cv.width, cv.height, 0, gl.RGB, gl.UNSIGNED_BYTE, buf_ptr);
+				Module._free(buf_ptr);
+			}
 		}, 
 
 		texEnvi: function(target, pname, param) {
@@ -1704,6 +1794,7 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 
 			// in case that the width of the canvas is not multiples of 4, we simply repeat 
 			// the last column in the framebuffer to the remained columns on canvas
+			//
 			//TODO: any better solution?
 			if (this._canvas.width > this._back_data.width) {
 				var oddment = this._canvas.width - this._back_data.width;
@@ -1714,6 +1805,7 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 		}
 
 	};
+
 
 	/*
 	 * Replace the default HTMLCanvasElement.prototype.getContext() method with our homemade 
@@ -1738,6 +1830,7 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 		}
 		catch (e) {}
 	}
+
 
 	return TinyGLRenderingContextCtor;
 
