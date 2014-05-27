@@ -1,0 +1,152 @@
+<!DOCTYPE>
+<HTML>
+	<HEAD>
+		<TITLE>Wire Box</TITLE>
+		<META NAME="Generator" CONTENT="EditPlus">
+		<META NAME="Author" CONTENT="">
+		<META NAME="Keywords" CONTENT="">
+		<META NAME="Description" CONTENT="">
+	</HEAD>
+
+	<BODY>
+		<div style="width:400px; margin:auto; position:relative; font-size: 9pt; color: #777777;">
+			<canvas id="cv" style="border: 1px solid;" width="400" height="400" ></canvas>
+		</div>
+		<script type="text/javascript" src="../js/tinygl.js"></script>
+		<script type="text/javascript">
+			var canvas = document.getElementById('cv');
+			var gl = canvas.getContext('experimental-tinygl');
+
+			var Xrot, Xstep;
+			var Yrot, Ystep;
+			var Zrot, Zstep;
+			var Step = 5.0;
+			var Scale = 1.0;
+			var box;
+
+			var lasttime = 0;
+
+			function init() {
+				box = wire_box();
+
+				gl.cullFace( gl.BACK );
+				gl.shadeModel( gl.FLAT );
+
+				Xrot = Yrot = Zrot = 0.0;
+				Xstep = Step;
+				Ystep = Zstep = 0.0;
+			}
+
+			function draw() {
+				gl.clear( gl.COLOR_BUFFER_BIT );
+
+				gl.pushMatrix();
+
+				gl.translatef( 0.0, 0.0, -10.0 );
+				gl.scalef( Scale, Scale, Scale );
+				if (Xstep) {
+				  gl.rotatef( Xrot, 1.0, 0.0, 0.0 );
+				}
+				else if (Ystep) {
+				  gl.rotatef( Yrot, 0.0, 1.0, 0.0 );
+				}
+				else {
+				  gl.rotatef( Zrot, 0.0, 0.0, 1.0 );
+				}
+
+				gl.callList( box );
+
+				gl.popMatrix();
+
+				gl.flush();
+				gl.swapBuffers();
+			}
+
+			function reshape(width, height) {
+				gl.viewport(0, 0, width, height);
+				gl.matrixMode(gl.PROJECTION);
+				gl.loadIdentity();
+				gl.frustum( -1.0, 1.0, -1.0, 1.0, 5.0, 15.0 );
+				gl.matrixMode(gl.MODELVIEW);
+			}
+
+			function loop() {
+				lasttime = Date.now();
+				tick();
+			}
+
+			function tick() {
+				var currtime = Date.now();
+				var deltatime = currtime - lasttime;
+
+				Xrot += Xstep;
+				Yrot += Ystep;
+				Zrot += Zstep;
+				if (Xrot>=360.0) {
+				  Xrot = Xstep = 0.0;
+				  Ystep = Step;
+				}
+				else if (Yrot>=360.0) {
+				  Yrot = Ystep = 0.0;
+				  Zstep = Step;
+				}
+				else if (Zrot>=360.0) {
+				  Zrot = Zstep = 0.0;
+				  Xstep = Step;
+				}
+
+				draw();
+
+				lasttime = currtime;
+				setTimeout(tick, 33/* 30 fps is required */);
+			}
+
+			function wire_box() {
+				var list = gl.genLists( 1 );
+
+				gl.newList( list, gl.COMPILE );
+
+				gl.begin( gl.LINE_LOOP );
+				gl.color3f( 1.0, 1.0, 1.0 );
+				gl.vertex3f(  1.0,  0.5, -0.4 );
+				gl.color3f( 1.0, 0.0, 0.0 );
+				gl.vertex3f(  1.0, -0.5, -0.4 );
+				gl.color3f( 0.0, 1.0, 0.0 );
+				gl.vertex3f( -1.0, -0.5, -0.4 );
+				gl.color3f( 0.0, 0.0, 1.0 );
+				gl.vertex3f( -1.0,  0.5, -0.4 );
+				gl.end();
+
+				gl.color3f( 1.0, 1.0, 1.0 );
+
+				gl.begin( gl.LINE_LOOP );
+				gl.vertex3f(  1.0,  0.5, 0.4 );
+				gl.vertex3f(  1.0, -0.5, 0.4 );
+				gl.vertex3f( -1.0, -0.5, 0.4 );
+				gl.vertex3f( -1.0,  0.5, 0.4 );
+				gl.end();
+
+				gl.begin( gl.LINES );
+				gl.vertex3f(  1.0,  0.5, -0.4 );   gl.vertex3f(  1.0,  0.5, 0.4 );
+				gl.vertex3f(  1.0, -0.5, -0.4 );   gl.vertex3f(  1.0, -0.5, 0.4 );
+				gl.vertex3f( -1.0, -0.5, -0.4 );   gl.vertex3f( -1.0, -0.5, 0.4 );
+				gl.vertex3f( -1.0,  0.5, -0.4 );   gl.vertex3f( -1.0,  0.5, 0.4 );
+				gl.end();
+
+				gl.endList();
+
+				return list;
+			}
+
+			function main() {
+				init();
+
+				reshape(canvas.width, canvas.height);
+
+				loop();
+			}
+
+			main();
+		</script>
+	</BODY>
+</HTML>
