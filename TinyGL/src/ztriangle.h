@@ -18,6 +18,7 @@
 
 #ifdef INTERP_Z
   int z1,dzdx,dzdy,dzdl_min,dzdl_max;
+  float winv1, dwinvdx, dwinvdy, dwinvdl_min, dwinvdl_max;
 #endif
 #ifdef INTERP_RGB
   int r1,drdx,drdy,drdl_min,drdl_max;
@@ -73,6 +74,11 @@
   d2 = p2->z - p0->z;
   dzdx = (int) (fdy2 * d1 - fdy1 * d2);
   dzdy = (int) (fdx1 * d2 - fdx2 * d1);
+
+  d1 = p1->winv - p0->winv;
+  d2 = p2->winv - p0->winv;
+  dwinvdx = fdy2 * d1 - fdy1 * d2;
+  dwinvdy = fdx1 * d2 - fdx2 * d1;
 #endif
 
 #ifdef INTERP_RGB
@@ -107,16 +113,12 @@
 
 #ifdef INTERP_STZ
   {
-    float zz;
-    zz=(float) p0->z;
-    p0->sz= (float) p0->s * zz;
-    p0->tz= (float) p0->t * zz;
-    zz=(float) p1->z;
-    p1->sz= (float) p1->s * zz;
-    p1->tz= (float) p1->t * zz;
-    zz=(float) p2->z;
-    p2->sz= (float) p2->s * zz;
-    p2->tz= (float) p2->t * zz;
+    p0->sz= (float) p0->s * p0->winv;
+    p0->tz= (float) p0->t * p0->winv;
+    p1->sz= (float) p1->s * p1->winv;
+    p1->tz= (float) p1->t * p1->winv;
+    p2->sz= (float) p2->s * p2->winv;
+    p2->tz= (float) p2->t * p2->winv;
 
     d1 = p1->sz - p0->sz;
     d2 = p2->sz - p0->sz;
@@ -190,6 +192,10 @@
       z1=l1->z;
       dzdl_min=(dzdy + dzdx * dxdy_min); 
       dzdl_max=dzdl_min + dzdx;
+
+	  winv1 = l1->winv;
+	  dwinvdl_min=(dwinvdy + dwinvdx * dxdy_min); 
+	  dwinvdl_max=dwinvdl_min + dwinvdx;
 #endif
 #ifdef INTERP_RGB
       r1=l1->r;
@@ -248,6 +254,7 @@
 #ifdef INTERP_Z
           register unsigned short *pz;
           register unsigned int z,zz;
+		  register float winv;
 #endif
 #ifdef INTERP_RGB
           register unsigned int or1,og1,ob1;
@@ -264,6 +271,7 @@
 #ifdef INTERP_Z
           pz=pz1+x1;
           z=z1;
+		  winv=winv1;
 #endif
 #ifdef INTERP_RGB
           or1 = r1;
@@ -309,6 +317,7 @@
 	x1+=dxdy_max;
 #ifdef INTERP_Z
 	z1+=dzdl_max;
+    winv1+=dwinvdl_max;
 #endif      
 #ifdef INTERP_RGB
 	r1+=drdl_max;
@@ -327,6 +336,7 @@
 	x1+=dxdy_min;
 #ifdef INTERP_Z
 	z1+=dzdl_min;
+    winv1+=dwinvdl_min;
 #endif      
 #ifdef INTERP_RGB
 	r1+=drdl_min;
