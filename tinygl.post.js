@@ -7,6 +7,10 @@
 	const BYTES_PER_UINT32  = 4;
 	const BYTES_PER_FLOAT32 = 4;
 	const BYTES_PER_FLOAT64 = 8;
+
+	/**
+	 * Function exported from TinyGL
+	 */
 	
 	var _ostgl_create_context = Module.cwrap('ostgl_create_context', 'number', ['number', 'number', 'number', 'number', 'number']);
 	var _ostgl_delete_context = Module.cwrap('ostgl_delete_context', null, ['number']);
@@ -83,6 +87,10 @@
 	var _glTexCoordPointer = Module.cwrap('glTexCoordPointer', null, ['number', 'number', 'number', 'number']);
 	var _glPolygonOffset = Module.cwrap('glPolygonOffset', null, ['number', 'number']);
 	var _glDebug = Module.cwrap('glDebug', null, ['number']);
+
+	/**
+	 * Utility functions
+	 */
 	
 	function createTGLContext(width, height, framebuf_ptr) {
 		// use a temporary pointer array with only 1 element to pass in our own framebuffer
