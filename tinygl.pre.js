@@ -27,7 +27,7 @@
  *
  * This software contains a compiled copy of the TinyGL project developed by 
  * Fabrice Bellard, Olivier Landemarre and Peder Blekken. The original license 
- * declaration is as following: 
+ * is declared as following: 
  *
  * Copyright (C) 1997-2002 Fabrice Bellard
  * 

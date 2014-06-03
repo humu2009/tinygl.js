@@ -15,7 +15,7 @@
 		<script type="text/javascript" src="../js/tinygl.js"></script>
 		<script type="text/javascript">
 			var canvas = document.getElementById('cv');
-			var gl = canvas.getContext('experimental-tinygl');
+			var gl = canvas.getContext('experimental-tinygl', { flipTextureY: true /* texture data should be flipped along the vertical axis */});
 
 			var Angle = 0.0;
 			var texture_ids;
@@ -57,13 +57,13 @@
 
 				gl.enable(gl.TEXTURE_2D);
 				gl.begin(gl.QUADS);
-				gl.texCoord2f(0.0, 1.0);
-				gl.vertex2f(-1.0, -1.0);
-				gl.texCoord2f(1.0, 1.0);
-				gl.vertex2f(1.0, -1.0);
-				gl.texCoord2f(1.0, 0.0);
-				gl.vertex2f(1.0, 1.0);
 				gl.texCoord2f(0.0, 0.0);
+				gl.vertex2f(-1.0, -1.0);
+				gl.texCoord2f(1.0, 0.0);
+				gl.vertex2f(1.0, -1.0);
+				gl.texCoord2f(1.0, 1.0);
+				gl.vertex2f(1.0, 1.0);
+				gl.texCoord2f(0.0, 1.0);
 				gl.vertex2f(-1.0, 1.0);
 				gl.end();
 				gl.disable(gl.TEXTURE_2D);
@@ -78,13 +78,13 @@
 
 				gl.enable(gl.TEXTURE_2D);
 				gl.begin(gl.QUADS);
-				gl.texCoord2f(0.0, 1.0);
-				gl.vertex2f(-1.0, -1.0);
-				gl.texCoord2f(1.0, 1.0);
-				gl.vertex2f(1.0, -1.0);
-				gl.texCoord2f(1.0, 0.0);
-				gl.vertex2f(1.0, 1.0);
 				gl.texCoord2f(0.0, 0.0);
+				gl.vertex2f(-1.0, -1.0);
+				gl.texCoord2f(1.0, 0.0);
+				gl.vertex2f(1.0, -1.0);
+				gl.texCoord2f(1.0, 1.0);
+				gl.vertex2f(1.0, 1.0);
+				gl.texCoord2f(0.0, 1.0);
 				gl.vertex2f(-1.0, 1.0);
 				gl.end();
 				gl.disable(gl.TEXTURE_2D);

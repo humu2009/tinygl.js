@@ -27,7 +27,7 @@
  *
  * This software contains a compiled copy of the TinyGL project developed by 
  * Fabrice Bellard, Olivier Landemarre and Peder Blekken. The original license 
- * declaration is as following: 
+ * is declared as following: 
  *
  * Copyright (C) 1997-2002 Fabrice Bellard
  * 
@@ -352,13 +352,33 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 		return pixels;
 	}
 
+	function flipPixelsY(pixels, bytes_per_line, gen_new_array) {
+		if (gen_new_array)
+			pixels = new Uint8Array(pixels);
+
+		var lines = pixels.length / bytes_per_line;
+		var n = lines >> 1;
+		for (var i=0; i<n; i++) {
+			var p0 = i * bytes_per_line;
+			var p1 = (lines - i - 1) * bytes_per_line;
+			var tmp;
+			for (var j=0; j<bytes_per_line; j++, p0++, p1++) {
+				tmp = pixels[p0];
+				pixels[p0] = pixels[p1];
+				pixels[p1] = tmp;
+			}
+		}
+
+		return pixels;
+	}
+
 
 	/**
 	 * @class 
 	 */
 	function TinyGLRenderingContextCtor(canvas, attribs) {
 		this._canvas = canvas;
-		this._attribs = attribs;
+		this._attribs = attribs || {};
 		this._surface = canvas.getContext('2d');
 
 		var w = calcAdjustedWidth(canvas.width);
@@ -1572,9 +1592,15 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 				 *
 				 * where pixels can be an array or a typed array.
 				 */
-				var isTypedArray = (typeof pixels.buffer) != 'undefined';
-				var buf_ptr = Module._malloc(isTypedArray ? pixels.length * pixels.BYTES_PER_ELEMENT : pixels.length);
-				Module.HEAPU8.set(isTypedArray ? (new Uint8Array(pixels.buffer)) : pixels, buf_ptr);
+				if ((typeof pixels.buffer) != 'undefined')
+					pixels = new Uint8Array(pixels.buffer);
+				if (this._attribs.flipTextureY)
+					pixels = flipPixelsY(pixels, pixels.length, true);
+				if ((typeof pixels.buffer) != 'undefined')
+					pixels = new Uint8Array(pixels.buffer);
+
+				var buf_ptr = Module._malloc(pixels.length);
+				Module.HEAPU8.set(pixels, buf_ptr);
 				_glTexImage2D(target, level, components, width, height, border, format, type, buf_ptr);
 				Module._free(buf_ptr);
 			} else if (arguments.length == 6) {
@@ -1612,6 +1638,9 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 				}
 
 				var pixels = grabPixelsRGBToUint8Array(cv);
+				if (this._attribs.flipTextureY)
+					flipPixelsY(pixels, 3 * cv.width);
+
 				var buf_ptr = Module._malloc(pixels.length);
 				Module.HEAPU8.set(pixels, buf_ptr);
 				_glTexImage2D(target, level, 3, cv.width, cv.height, 0, gl.RGB, gl.UNSIGNED_BYTE, buf_ptr);
