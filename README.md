@@ -28,7 +28,7 @@ var canvas = document.getElementById(canvas_id);
 var gl = new TinyGLRenderingContext(canvas);
 ```
 
-Now that we have the rendering context, let's begin with some simple primitives:
+Now that we have the rendering context, let's begin with some basic primitives:
 
 ```js
 gl.viewport(0, 0, canvas.width, canvas.height);
