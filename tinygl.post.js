@@ -176,21 +176,298 @@
 		return pixels;
 	}
 
+	function intersectRects(r0, r1) {
+		var xmax0 = r0.x + r0.w;
+		var ymax0 = r0.y + r0.h;
+		var xmax1 = r1.x + r1.w;
+		var ymax1 = r1.y + r1.h;
+
+		var xmin = Math.max(r0.x, r1.x);
+		var ymin = Math.max(r0.y, r1.y);
+		return {
+			x: xmin, 
+			y: ymin, 
+			w: Math.min(xmax0, xmax1) - xmin, 
+			h: Math.min(ymax0, ymax1) - ymin
+		};
+	}
+
+	// IE11 provides a partial implementation of WebGL. For this very browser, some special treatments are required.
+	var is_ie11_compatible = (typeof navigator) != 'undefined' && /Trident\/\d+\.\d+;\s.*rv:(\d+(?:\.\d+)*)/.test(navigator.userAgent);
+
+	function createWebGLProgram(ctx3d, vsrc, fsrc) {
+		var vshader = ctx3d.createShader(ctx3d.VERTEX_SHADER);
+		ctx3d.shaderSource(vshader, vsrc);
+		ctx3d.compileShader(vshader);
+		if (!ctx3d.getShaderParameter(vshader, ctx3d.COMPILE_STATUS)) {
+			debug_output.warn('Vertex shader compilation failed: ' + ctx3d.getShaderInfoLog(vshader));
+			return null;
+		}
+
+		var fshader = ctx3d.createShader(ctx3d.FRAGMENT_SHADER);
+		ctx3d.shaderSource(fshader, fsrc);
+		ctx3d.compileShader(fshader);
+		if (!ctx3d.getShaderParameter(fshader, ctx3d.COMPILE_STATUS)) {
+			debug_output.warn('Fragment shader compilation failed: ' + ctx3d.getShaderInfoLog(fshader));
+			return null;
+		}
+
+		var program = ctx3d.createProgram();
+		ctx3d.attachShader(program, vshader);
+		ctx3d.attachShader(program, fshader);
+		ctx3d.linkProgram(program);
+		if (!ctx3d.getProgramParameter(program, ctx3d.LINK_STATUS)) {
+			debug_output.warn('Program generation failed: ' + ctx3d.getProgramInfoLog(program));
+			return null;
+		}
+
+		var attributes = {};
+		var attrib_count = ctx3d.getProgramParameter(program, ctx3d.ACTIVE_ATTRIBUTES);
+		for (var i=0; i<attrib_count; i++) {
+			var attrib = ctx3d.getActiveAttrib(program, i);
+			attributes[attrib.name] = ctx3d.getAttribLocation(program, attrib.name);
+		}
+
+		var uniforms = {};
+		var uniform_count = ctx3d.getProgramParameter(program, ctx3d.ACTIVE_UNIFORMS);
+		for (var i=0; i<uniform_count; i++) {
+			var uniform = ctx3d.getActiveUniform(program, i);
+			uniforms[uniform.name] = ctx3d.getUniformLocation(program, uniform.name);
+		}
+
+		return {
+			program: program, 
+			attributes: attributes, 
+			uniforms: uniforms
+		};
+	}
+
+	function createWebGLTextureFromPixels(ctx3d, width, height, pixels) {
+		// assert: (pixels instanceof Uint8Array) || pixels == null
+		// assert: pixels.length == width * height * BYTES_PER_UINT32
+
+		var texture = ctx3d.createTexture();
+		ctx3d.bindTexture(ctx3d.TEXTURE_2D, texture);
+		ctx3d.texImage2D(ctx3d.TEXTURE_2D, 0, ctx3d.RGBA, width, height, 0, ctx3d.RGBA, ctx3d.UNSIGNED_BYTE, pixels);
+		ctx3d.texParameteri(ctx3d.TEXTURE_2D, ctx3d.TEXTURE_MAG_FILTER, ctx3d.NEAREST);
+		ctx3d.texParameteri(ctx3d.TEXTURE_2D, ctx3d.TEXTURE_MIN_FILTER, ctx3d.NEAREST);
+		ctx3d.texParameteri(ctx3d.TEXTURE_2D, ctx3d.TEXTURE_WRAP_S, ctx3d.CLAMP_TO_EDGE);
+		ctx3d.texParameteri(ctx3d.TEXTURE_2D, ctx3d.TEXTURE_WRAP_T, ctx3d.CLAMP_TO_EDGE);
+		return texture;
+	}
+
+	var debug_output = (typeof console) != 'undefined' ? console : {
+		info: function() {}, 
+		warn: function() {}, 
+		error: function() {}
+	};
+
+
+	/**
+	 * Utility classes
+	 */
+
+	function Canvas2DSurfaceDriver(canvas, framebuf_width, framebuf_height) {
+		this._canvas = canvas;
+		this._ctx2d = canvas.getContext('2d');
+		if (!this._ctx2d) {
+			throw 'Canvas2DSurfaceDriver constructor failed: cannot get 2D context.';
+		}
+
+		this._img_data = this._ctx2d.createImageData(canvas.width, canvas.height);
+	}
+
+	Canvas2DSurfaceDriver.prototype = {
+
+		deliver: function(viewport, framebuf) {
+			var dirty_rect = intersectRects(viewport, {x: 0, y: 0, w: this._img_data.width, h: this._img_data.height});
+
+			// copy pixels from framebuffer to imageData, swapping each R and B components
+			var src, dest;
+			var data = this._img_data.data;
+			for (var i=dirty_rect.y, m=i+dirty_rect.h; i<m; i++) {
+				src  = (i * viewport.W + dirty_rect.x) << 2;
+				dest = (i * this._img_data.width + dirty_rect.x) << 2;
+				for (var j=dirty_rect.x, n=j+dirty_rect.w; j<n; j++) {
+					data[dest    ] = framebuf[src + 2];
+					data[dest + 1] = framebuf[src + 1];
+					data[dest + 2] = framebuf[src    ];
+					data[dest + 3] = 255;
+					src  += 4;
+					dest += 4;
+				}
+			}
+
+			// update canvas display
+			this._ctx2d.putImageData(this._img_data, 0, 0);
+		}
+
+	};
+
+
+	function WebGLSurfaceDriver(canvas, framebuf_width, framebuf_height) {
+		this._canvas = canvas;
+
+		var preferences = {
+			antialias: false, 
+			preserveDrawingBuffer: true
+		};
+		var ctx3d = canvas.getContext('experimental-webgl', preferences) || 
+					canvas.getContext('webgl', preferences);
+		if (!ctx3d) {
+			throw 'WebGLSurfaceDriver constructor failed: cannot get WebGL context.';
+		}
+		this._ctx3d = ctx3d;
+
+		var v_shader = [
+			'#ifdef GL_ES', 
+			'	precision mediump float;', 
+			'#endif', 
+			'', 
+			'attribute vec2 a_position;', 
+			'attribute vec2 a_texCoord;',
+			'varying vec2 v_texCoord;', 
+			'', 
+			'void main(void) {', 
+			'	v_texCoord = a_texCoord;', 
+			'	gl_Position = vec4(a_position, 1.0, 1.0);', 
+			'}'
+		].join('\n');
+		var f_shader = [
+			'#ifdef GL_ES', 
+			'	precision mediump float;', 
+			'#endif', 
+			'', 
+			'uniform sampler2D s_canvasTex;', 
+			'varying vec2 v_texCoord;', 
+			'', 
+			'void main(void) {', 
+			'	vec4 texel = texture2D(s_canvasTex, v_texCoord);', 
+			'	gl_FragColor = vec4(texel.b, texel.g, texel.r, 1.0);', 
+			'}'
+		].join('\n');
+
+		// create program
+		this._program_info = createWebGLProgram(ctx3d, v_shader, f_shader);
+
+		// create canvas rectangle
+		//
+		this._canvas_rect_coords = ctx3d.createBuffer();
+		ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_coords);
+		ctx3d.bufferData(ctx3d.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, 1, 1, -1, 1, -1, -1]), ctx3d.STATIC_DRAW);
+		this._canvas_rect_texcoords = ctx3d.createBuffer();
+		ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_texcoords);
+		ctx3d.bufferData(ctx3d.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0]), ctx3d.STATIC_DRAW);
+		ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, null);
+
+		// create canvas texture
+		//
+		this._canvas_texture = createWebGLTextureFromPixels(ctx3d, framebuf_width, framebuf_height, null);
+		ctx3d.bindTexture(ctx3d.TEXTURE_2D, null);
+
+		this._canvas_texture_width = framebuf_width;
+		this._canvas_texture_height = framebuf_height;
+	}
+
+	WebGLSurfaceDriver.prototype = {
+
+		deliver: function(viewport, framebuf) {
+			var ctx3d = this._ctx3d;
+
+			ctx3d.viewport(0, 0, this._canvas.width, this._canvas.height);
+			ctx3d.frontFace(ctx3d.CCW);
+			ctx3d.disable(ctx3d.DEPTH_TEST);
+			ctx3d.depthMask(false);
+
+			ctx3d.useProgram(this._program_info.program);
+
+			var x = -1;
+			var y = 1 - 2 * viewport.H / this._canvas.height;
+			var w = 2 * viewport.W / this._canvas.width;
+			var h = 2 * viewport.H / this._canvas.height;
+
+			// update canvas display with given framebuffer
+			//
+			ctx3d.activeTexture(ctx3d.TEXTURE0);
+			ctx3d.bindTexture(ctx3d.TEXTURE_2D, this._canvas_texture);
+			ctx3d.pixelStorei(ctx3d.UNPACK_FLIP_Y_WEBGL, true);
+			if (this._canvas_texture_width != viewport.W || this._canvas_texture_height != viewport.H) {
+				// recreate canvas texture from the given framebuffer since viewport has changed
+				ctx3d.bindTexture(ctx3d.TEXTURE_2D, null);
+				ctx3d.deleteTexture(this._canvas_texture);
+				this._canvas_texture = createWebGLTextureFromPixels(ctx3d, viewport.W, viewport.H, framebuf);
+				this._canvas_texture_width  = viewport.W;
+				this._canvas_texture_height = viewport.H;
+			} else {
+				// update texture data with pixels from framebuffer
+				ctx3d.texSubImage2D(ctx3d.TEXTURE_2D, 0, 0, 0, this._canvas_texture_width, this._canvas_texture_height, ctx3d.RGBA, ctx3d.UNSIGNED_BYTE, framebuf);
+			}
+			ctx3d.pixelStorei(ctx3d.UNPACK_FLIP_Y_WEBGL, false);
+			ctx3d.uniform1i(this._program_info.uniforms['s_canvasTex'], 0);
+			ctx3d.enableVertexAttribArray(this._program_info.attributes['a_position']);
+			if (!is_ie11_compatible) {
+				// apply viewport
+				ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_coords);
+				ctx3d.bufferSubData(ctx3d.ARRAY_BUFFER, 0, new Float32Array([x, y, x + w, y, x + w, y + h, x + w, y + h, x, y + h, x, y]));
+			} else {
+				// IE11 does not implement bufferSubData(), so we just create a new buffer for the viewport rectangle
+				ctx3d.deleteBuffer(this._canvas_rect_coords);
+				this._canvas_rect_coords = ctx3d.createBuffer();
+				ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_coords);
+				ctx3d.bufferData(ctx3d.ARRAY_BUFFER, new Float32Array([x, y, x + w, y, x + w, y + h, x + w, y + h, x, y + h, x, y]), ctx3d.STATIC_DRAW);
+			}
+			ctx3d.vertexAttribPointer(this._program_info.attributes['a_position'], 2, ctx3d.FLOAT, false, 0, 0);
+			ctx3d.enableVertexAttribArray(this._program_info.attributes['a_texCoord']);
+			ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_texcoords);
+			ctx3d.vertexAttribPointer(this._program_info.attributes['a_texCoord'], 2, ctx3d.FLOAT, false, 0, 0);
+			ctx3d.drawArrays(ctx3d.TRIANGLES, 0, 6);
+			ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, null);
+			ctx3d.bindTexture(ctx3d.TEXTURE_2D, null);
+
+			ctx3d.flush();
+		}
+
+	};
+
 
 	/**
 	 * @class 
 	 */
 	function TinyGLRenderingContextCtor(canvas, attribs) {
-		this._canvas = canvas;
+		this._surface = canvas;
 		this._attribs = attribs || {};
-		this._surface = canvas.getContext('2d');
 
 		var w = calcAdjustedWidth(canvas.width);
 		var h = canvas.height;
 
-		this._back_data = this._surface.createImageData(w, h);
 		this._frame_buf_ptr = reallocateFramebuffer(w, h, 0);
+		this._frame_buf_width = w;
+		this._frame_buf_height = h;
+
 		this._tgl_ctx = createTGLContext(w, h, this._frame_buf_ptr);
+
+		this._driver = null;
+		if (this._attribs.driver != 'webgl') {
+			try {
+				this._driver = new Canvas2DSurfaceDriver(canvas, w, h);
+			} catch (e) {
+			}
+		}
+		if (!this._driver) {
+			if (this._attribs.driver == '2d')
+				throw 'Failed to initialize TinyGL with 2D context.';
+
+			try {
+				this._driver = new WebGLSurfaceDriver(canvas, w, h);
+			} catch (e) {
+			}
+		}
+		if (!this._driver) {
+			if (this._attribs.driver == 'webgl')
+				throw 'Failed to initialize TinyGL with WebGL context.';
+			else
+				throw 'Failed to initialize TinyGL, neither 2D context nor WebGL context is available.';
+		}
 
 		this._is_select_mode = false;
 		this._select_output_buf = null;
@@ -201,6 +478,15 @@
 		this._array_color_buf_ptr = 0;
 		this._array_normal_buf_ptr = 0;
 		this._array_texcoord_buf_ptr = 0;
+
+		this._vp = {
+			x: 0, 
+			y: 0, 
+			w: w, 
+			h: h, 
+			W: w, 
+			H: h
+		};
 	}
 
 	TinyGLRenderingContextCtor.prototype = {
@@ -1220,22 +1506,32 @@
 			var req_framebuf_width  = calcAdjustedWidth(x + width);
 			var req_framebuf_height = y + height;
 
-			// resize and reallocate framebuffer as well as imageData if necessary
-			if( req_framebuf_width != this._back_data.width || 
-				req_framebuf_height != this._back_data.height ) {
+			// resize and reallocate framebuffer if necessary
+			if( req_framebuf_width != this._frame_buf_width || 
+				req_framebuf_height != this._frame_buf_height ) {
 				this._frame_buf_ptr = reallocateFramebuffer(req_framebuf_width, req_framebuf_height, this._frame_buf_ptr);
+				this._frame_buf_width = req_framebuf_width;
+				this._frame_buf_height = req_framebuf_height;
 
 				var framebuf_ptr_arr_ptr = Module._malloc(BYTES_PER_UINT32);
 				Module.setValue(framebuf_ptr_arr_ptr, this._frame_buf_ptr, 'i32');
 				_ostgl_resize(this._tgl_ctx, req_framebuf_width, req_framebuf_height, framebuf_ptr_arr_ptr);
 				Module._free(framebuf_ptr_arr_ptr);
-
-				this._back_data = this._surface.createImageData(req_framebuf_width, req_framebuf_height);
 			}
 
 			// calculate the adjusted width and height of the viewport
 			width  = req_framebuf_width - x;
 			height = req_framebuf_height - y;
+
+			// cache the new viewport locally
+			this._vp = {
+				x: x, 
+				y: y, 
+				w: width, 
+				h: height, 
+				W: req_framebuf_width, 
+				H: req_framebuf_height
+			};
 
 			_glViewport(x, y, width, height);
 		}, 
@@ -1612,29 +1908,9 @@
 		}, 
 
 		swapBuffers: function() {
-			// copy pixels from framebuffer to imageData, swapping each R and B components
-			var data = this._back_data.data;
-			var frame_buf = Module.HEAPU8.subarray(this._frame_buf_ptr, this._frame_buf_ptr + data.length);
-			for (var i=0, j=0, l=data.length>>2; i<l; i++, j+=4) {
-				data[j    ] = frame_buf[j + 2];
-				data[j + 1] = frame_buf[j + 1];
-				data[j + 2] = frame_buf[j    ];
-				data[j + 3] = 255;
-			}
-
-			// update canvas display
-			this._surface.putImageData(this._back_data, 0, 0);
-
-			// in case that the width of the canvas is not multiples of 4, we simply repeat 
-			// the last column in the framebuffer to the remained columns on canvas
-			//
-			//TODO: any better solution?
-			if (this._canvas.width > this._back_data.width) {
-				var oddment = this._canvas.width - this._back_data.width;
-				this._surface.drawImage(this._canvas, 
-					this._back_data.width - 1, 0, 1, this._back_data.height, 
-					this._back_data.width, 0, oddment, this._back_data.height);
-			}
+			var frame_buf_size = this._frame_buf_width * this._frame_buf_height * BYTES_PER_UINT32;
+			var frame_buf = Module.HEAPU8.subarray(this._frame_buf_ptr, this._frame_buf_ptr + frame_buf_size);
+			this._driver.deliver(this._vp, frame_buf);
 		}
 
 	};
@@ -1656,12 +1932,17 @@
 			var default_get_context_func = HTMLCanvasElement.prototype.getContext;
 			HTMLCanvasElement.prototype.getContext = function() {
 				if (arguments[0] == 'experimental-tinygl') {
-					return new TinyGLRenderingContextCtor(this, arguments[1]);
+					try {
+						return new TinyGLRenderingContextCtor(this, arguments[1]);
+					} catch (e) {
+						return null;
+					}
+					
 				}
 				return default_get_context_func.apply(this, arguments);
 			};
+		} catch (e) {
 		}
-		catch (e) {}
 	}
 
 
