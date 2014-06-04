@@ -61,3 +61,8 @@ Browser Requirements
 --------------------
 
 TinyGL.js depends on [Canvas](http://caniuse.com/#feat=canvas) and  [Typed Arrays](http://caniuse.com/#feat=typedarrays). Make sure your browser supports these features to run codes with TinyGL.js.
+
+Known Issues
+------------
+
+* Canvas width must be multiples of 4 according to TinyGL's restriction. Otherwise, there may be some columns not refreshed.
