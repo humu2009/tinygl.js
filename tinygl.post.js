@@ -242,7 +242,7 @@
 		};
 	}
 
-	function createWebGLTextureFromPixels(ctx3d, width, height, pixels) {
+	function createWebGLTextureCopyPixels(ctx3d, width, height, pixels) {
 		// assert: (pixels instanceof Uint8Array) || pixels == null
 		// assert: pixels.length == width * height * BYTES_PER_UINT32
 
@@ -360,9 +360,9 @@
 		ctx3d.bufferData(ctx3d.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0]), ctx3d.STATIC_DRAW);
 		ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, null);
 
-		// create canvas texture
+		// create canvas texture with the dimensions of the framebuffer
 		//
-		this._canvas_texture = createWebGLTextureFromPixels(ctx3d, framebuf_width, framebuf_height, null);
+		this._canvas_texture = createWebGLTextureCopyPixels(ctx3d, framebuf_width, framebuf_height, null);
 		ctx3d.bindTexture(ctx3d.TEXTURE_2D, null);
 
 		this._canvas_texture_width = framebuf_width;
@@ -395,7 +395,7 @@
 				// recreate canvas texture from the given framebuffer since viewport has changed
 				ctx3d.bindTexture(ctx3d.TEXTURE_2D, null);
 				ctx3d.deleteTexture(this._canvas_texture);
-				this._canvas_texture = createWebGLTextureFromPixels(ctx3d, viewport.W, viewport.H, framebuf);
+				this._canvas_texture = createWebGLTextureCopyPixels(ctx3d, viewport.W, viewport.H, framebuf);
 				this._canvas_texture_width  = viewport.W;
 				this._canvas_texture_height = viewport.H;
 			} else {
@@ -410,7 +410,7 @@
 				ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_coords);
 				ctx3d.bufferSubData(ctx3d.ARRAY_BUFFER, 0, new Float32Array([x, y, x + w, y, x + w, y + h, x + w, y + h, x, y + h, x, y]));
 			} else {
-				// IE11 does not implement bufferSubData(), so we just create a new buffer for the viewport rectangle
+				// IE11 does not implement bufferSubData(), so we just recreate the buffer for the viewport rectangle
 				ctx3d.deleteBuffer(this._canvas_rect_coords);
 				this._canvas_rect_coords = ctx3d.createBuffer();
 				ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_coords);
@@ -479,14 +479,18 @@
 		this._array_normal_buf_ptr = 0;
 		this._array_texcoord_buf_ptr = 0;
 
+		// local cache of the viewport
 		this._vp = {
 			x: 0, 
 			y: 0, 
 			w: w, 
 			h: h, 
-			W: w, 
-			H: h
+			// the dimensions of the framebuffer according to current viewport
+			W: w, // W = x + w
+			H: h  // H = y + h
 		};
+
+		this._pixelStoreFlipY = false;
 	}
 
 	TinyGLRenderingContextCtor.prototype = {
@@ -577,7 +581,7 @@
 		T2F_C4F_N3F_V3F:  0x2A2C,
 		T4F_C4F_N3F_V4F:  0x2A2D,
 
-		// Matrix Mode
+		// Matrix Modes
 		//
 
 		MATRIX_MODE:  0x0BA0,
@@ -1200,6 +1204,12 @@
 		SCISSOR_BIT:  0x00080000,
 		ALL_ATTRIB_BITS:  0x000FFFFF, 
 
+		/*
+		 * TinyGL.js specific
+		 */
+
+		UNPACK_FLIP_Y_TINYGL:  0x9240, 
+
 		/* 
 		 * Functions
 		 */
@@ -1694,7 +1704,7 @@
 				 */
 				if ((typeof pixels.buffer) != 'undefined')
 					pixels = new Uint8Array(pixels.buffer);
-				if (this._attribs.flipTextureY)
+				if (this._attribs.flipTextureY || this._pixelStoreFlipY)
 					pixels = flipPixelsY(pixels, pixels.length, true);
 				if ((typeof pixels.buffer) != 'undefined')
 					pixels = new Uint8Array(pixels.buffer);
@@ -1738,7 +1748,7 @@
 				}
 
 				var pixels = grabPixelsRGBToUint8Array(cv);
-				if (this._attribs.flipTextureY)
+				if (this._attribs.flipTextureY || this._pixelStoreFlipY)
 					flipPixelsY(pixels, 3 * cv.width);
 
 				var buf_ptr = Module._malloc(pixels.length);
@@ -1760,7 +1770,16 @@
 
 		pixelStorei: function(pname, param) {
 			_ostgl_make_current(this._tgl_ctx, 0);
-			_glPixelStorei(pname, param);
+			switch (pname) {
+			case this.UNPACK_FLIP_Y_TINYGL:
+				// we implement the non-standard parameter UNPACK_FLIP_Y_TINYGL 
+				// in the wrapper layer rather than in TinyGL
+				this._pixelStoreFlipY = !!param;
+				break;
+			default:
+				_glPixelStorei(pname, param);
+				break;
+			}
 		}, 
 
 		// Lighting
@@ -1921,11 +1940,11 @@
 	 * implementation, so that a TinyGL rendering context can be fetched using the following 
 	 * semantics: 
 	 *
-	 *   var canvas = document.getElementById('canvas_id');
+	 *   var canvas = document.getElementById(canvas_id);
 	 *   var gl = canvas.getContext('experimental-tinygl');
 	 *   ...
 	 *
-	 * just as what we do for a canvas2D or a WebGL context.
+	 * just as what we do when requiring a canvas2D or a WebGL context.
 	 */
 	if ((typeof HTMLCanvasElement) != 'undefined') {
 		try {
