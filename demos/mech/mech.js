@@ -1,3 +1,12 @@
+/**
+* program	: glutmech V1.1
+* author	: Simon Parkinson-Bates.
+* E-mail	: sapb@yallara.cs.rmit.edu.au
+* Copyright Simon Parkinson-Bates.
+* "source if freely avaliable to anyone to copy as long as they
+*  acknowledge me in their work."
+*
+**/
 
 /* start of display list definitions */
 const SOLID_MECH_TORSO = 1

@@ -243,8 +243,8 @@
 	}
 
 	function createWebGLTextureCopyPixels(ctx3d, width, height, pixels) {
-		// assert: (pixels instanceof Uint8Array) || pixels == null
-		// assert: pixels.length == width * height * BYTES_PER_UINT32
+		//assert: (pixels instanceof Uint8Array) || pixels == null
+		//assert: pixels.length == width * height * BYTES_PER_UINT32
 
 		var texture = ctx3d.createTexture();
 		ctx3d.bindTexture(ctx3d.TEXTURE_2D, texture);
@@ -1749,7 +1749,7 @@
 
 				var pixels = grabPixelsRGBToUint8Array(cv);
 				if (this._attribs.flipTextureY || this._pixelStoreFlipY)
-					flipPixelsY(pixels, 3 * cv.width);
+					flipPixelsY(pixels, 3/* RGB */ * cv.width);
 
 				var buf_ptr = Module._malloc(pixels.length);
 				Module.HEAPU8.set(pixels, buf_ptr);
