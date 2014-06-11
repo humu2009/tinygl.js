@@ -447,8 +447,8 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 	}
 
 	function createWebGLTextureCopyPixels(ctx3d, width, height, pixels) {
-		// assert: (pixels instanceof Uint8Array) || pixels == null
-		// assert: pixels.length == width * height * BYTES_PER_UINT32
+		//assert: (pixels instanceof Uint8Array) || pixels == null
+		//assert: pixels.length == width * height * BYTES_PER_UINT32
 
 		var texture = ctx3d.createTexture();
 		ctx3d.bindTexture(ctx3d.TEXTURE_2D, texture);
@@ -484,6 +484,10 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 	Canvas2DSurfaceDriver.prototype = {
 
 		deliver: function(viewport, framebuf) {
+			// recreate imageData with the new canvas dimensions if they have changed
+			if (this._img_data.width != this._canvas.width || this._img_data.height != this._canvas.height)
+				this._img_data = this._ctx2d.createImageData(this._canvas.width, this._canvas.height);
+
 			var dirty_rect = intersectRects(viewport, {x: 0, y: 0, w: this._img_data.width, h: this._img_data.height});
 
 			// copy pixels from framebuffer to imageData, swapping each R and B components
@@ -1953,11 +1957,11 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 
 				var pixels = grabPixelsRGBToUint8Array(cv);
 				if (this._attribs.flipTextureY || this._pixelStoreFlipY)
-					flipPixelsY(pixels, 3 * cv.width);
+					flipPixelsY(pixels, 3/* RGB */ * cv.width);
 
 				var buf_ptr = Module._malloc(pixels.length);
 				Module.HEAPU8.set(pixels, buf_ptr);
-				_glTexImage2D(target, level, 3, cv.width, cv.height, 0, gl.RGB, gl.UNSIGNED_BYTE, buf_ptr);
+				_glTexImage2D(target, level, 3, cv.width, cv.height, 0, this.RGB, this.UNSIGNED_BYTE, buf_ptr);
 				Module._free(buf_ptr);
 			}
 		}, 
@@ -2144,11 +2148,11 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 	 * implementation, so that a TinyGL rendering context can be fetched using the following 
 	 * semantics: 
 	 *
-	 *   var canvas = document.getElementById('canvas_id');
+	 *   var canvas = document.getElementById(canvas_id);
 	 *   var gl = canvas.getContext('experimental-tinygl');
 	 *   ...
 	 *
-	 * just as what we do for a canvas2D or a WebGL context.
+	 * just as what we do when requiring a canvas2D or a WebGL context.
 	 */
 	if ((typeof HTMLCanvasElement) != 'undefined') {
 		try {
