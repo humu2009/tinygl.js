@@ -280,6 +280,10 @@
 	Canvas2DSurfaceDriver.prototype = {
 
 		deliver: function(viewport, framebuf) {
+			// recreate imageData with the new canvas dimensions if they have changed
+			if (this._img_data.width != this._canvas.width || this._img_data.height != this._canvas.height)
+				this._img_data = this._ctx2d.createImageData(this._canvas.width, this._canvas.height);
+
 			var dirty_rect = intersectRects(viewport, {x: 0, y: 0, w: this._img_data.width, h: this._img_data.height});
 
 			// copy pixels from framebuffer to imageData, swapping each R and B components
