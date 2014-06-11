@@ -1757,7 +1757,7 @@
 
 				var buf_ptr = Module._malloc(pixels.length);
 				Module.HEAPU8.set(pixels, buf_ptr);
-				_glTexImage2D(target, level, 3, cv.width, cv.height, 0, gl.RGB, gl.UNSIGNED_BYTE, buf_ptr);
+				_glTexImage2D(target, level, 3, cv.width, cv.height, 0, this.RGB, this.UNSIGNED_BYTE, buf_ptr);
 				Module._free(buf_ptr);
 			}
 		}, 
