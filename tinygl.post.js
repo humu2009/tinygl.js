@@ -143,11 +143,9 @@
 		return util_canvas;
 	}
 
-	function grabPixelsRGBToUint8Array(canvas) {
-		var ctx2d = canvas.getContext('2d');
-		var imgData = ctx2d.getImageData(0, 0, canvas.width, canvas.height);
+	function grabPixelsRGBToUint8Array(imgData) {
 		var data = imgData.data;
-		var pixels = new Uint8Array(canvas.width * canvas.height * 3);
+		var pixels = new Uint8Array(imgData.width * imgData.height * 3);
 		for (var i=0, j=0, k=0, l=data.length>>2; i<l; i++, j+=3, k+=4) {
 			pixels[j    ] = data[k    ];
 			pixels[j + 1] = data[k + 1];
@@ -243,8 +241,8 @@
 	}
 
 	function createWebGLTextureCopyPixels(ctx3d, width, height, pixels) {
-		//assert: (pixels instanceof Uint8Array) || pixels == null
-		//assert: pixels.length == width * height * BYTES_PER_UINT32
+		//ASSERT: (pixels instanceof Uint8Array) || pixels == null
+		//ASSERT: pixels.length == width * height * BYTES_PER_UINT32
 
 		var texture = ctx3d.createTexture();
 		ctx3d.bindTexture(ctx3d.TEXTURE_2D, texture);
@@ -293,10 +291,10 @@
 				src  = (i * viewport.W + dirty_rect.x) << 2;
 				dest = (i * this._img_data.width + dirty_rect.x) << 2;
 				for (var j=dirty_rect.x, n=j+dirty_rect.w; j<n; j++) {
-					data[dest    ] = framebuf[src + 2];
-					data[dest + 1] = framebuf[src + 1];
-					data[dest + 2] = framebuf[src    ];
-					data[dest + 3] = 255;
+					data[dest    ] = framebuf[src + 2];	// R
+					data[dest + 1] = framebuf[src + 1];	// G
+					data[dest + 2] = framebuf[src    ];	// B
+					data[dest + 3] = framebuf[src + 3];	// Alpha
 					src  += 4;
 					dest += 4;
 				}
@@ -1721,9 +1719,19 @@
 				/*
 				 * Signature 2: 
 				 *
-				 *   texImage2D(target, level, components, format, type, domElement)
+				 *   texImage2D(target, level, components, format, type, domElement/imageData)
 				 * 
-				 * where domElement can be either <img>, <video> or <canvas>.
+				 * where domElement can be either <img>, <video> or <canvas>. 
+				 * If the last parameter is given as an ImageData, it is expected to have (or 
+				 * be compatible with) the following structure:
+				 * 
+				 *   ImageData {
+				 *      width:  <number>, 
+				 *      height: <number>, 
+				 *      data:   <Array>/<TypedArray>
+				 * }
+				 * 
+				 * where data should have a size of at least 4 * width * height.
 				 */
 				var domElement = arguments[5];
 				var elem_type = '';
@@ -1733,31 +1741,43 @@
 					elem_type = 'video';
 				} else if ((typeof HTMLCanvasElement) != 'undefined' && (domElement instanceof HTMLCanvasElement)) {
 					elem_type = 'canvas';
+				} else if ((typeof domElement.width) == 'number' && (typeof domElement.height) == 'number' && 
+						   domElement.data && (typeof domElement.data.length) == 'number') {
+					if (domElement.data.length < 4 * width * height) {
+						debug_output.warn('Insufficient data for texImage2D()');
+						return;
+					}
+					elem_type = 'ImageData';
 				}
 
-				var cv = null;
+				var imgData = null;
 				switch (elem_type) {
 				case 'image':
 				case 'video':
-					cv = getUtilCanvas(/*domElement.width, domElement.height*/ 256, 256);
+					var cv = getUtilCanvas(/*domElement.width, domElement.height*/ 256, 256);
 					var ctx2d = cv.getContext('2d');
 					ctx2d.drawImage(domElement, 0, 0, cv.width, cv.height);
+					imgData = ctx2d.getImageData(0, 0, cv.width, cv.height);
 					break;
 				case 'canvas':
-					cv = domElement;
+					var ctx2d = domElement.getContext('2d');
+					imgData = ctx2d.getImageData(0, 0, domElement.width, domElement.height);
+					break;
+				case 'ImageData':
+					imgData = domElement;
 					break;
 				default:
-					//TODO: log warnings for the wrong input?
+					debug_output.warn('Unacceptable inputs for texImage2D()');
 					return;
 				}
 
-				var pixels = grabPixelsRGBToUint8Array(cv);
+				var pixels = grabPixelsRGBToUint8Array(imgData);
 				if (this._attribs.flipTextureY || this._pixelStoreFlipY)
-					flipPixelsY(pixels, 3/* RGB */ * cv.width);
+					flipPixelsY(pixels, 3/* RGB */ * imgData.width);
 
 				var buf_ptr = Module._malloc(pixels.length);
 				Module.HEAPU8.set(pixels, buf_ptr);
-				_glTexImage2D(target, level, 3, cv.width, cv.height, 0, this.RGB, this.UNSIGNED_BYTE, buf_ptr);
+				_glTexImage2D(target, level, 3, imgData.width, imgData.height, 0, this.RGB, this.UNSIGNED_BYTE, buf_ptr);
 				Module._free(buf_ptr);
 			}
 		}, 
