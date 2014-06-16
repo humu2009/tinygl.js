@@ -17,6 +17,8 @@ void ZB_plot(ZBuffer * zb, ZBufferPoint * p)
         pp[0]=p->r>>8;
         pp[1]=p->g>>8;
         pp[2]=p->b>>8;
+#elif TGL_FEATURE_RENDER_BITS == 32
+	*pp = 0xff000000 | RGB_TO_PIXEL(p->r, p->g, p->b);
 #else
 	*pp = RGB_TO_PIXEL(p->r, p->g, p->b);
 #endif

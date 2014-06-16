@@ -44,6 +44,8 @@
 #define RGB(x) x
 #if TGL_FEATURE_RENDER_BITS == 24
 #define RGBPIXEL pp[0] = r >> 16, pp[1] = g >> 16, pp[2] = b >> 16
+#elif TGL_FEATURE_RENDER_BITS == 32
+#define RGBPIXEL *pp = 0xff000000 | RGB_TO_PIXEL(r >> 8,g >> 8,b >> 8)
 #else
 #define RGBPIXEL *pp = RGB_TO_PIXEL(r >> 8,g >> 8,b >> 8)
 #endif
@@ -51,6 +53,8 @@
 #define RGB(x)
 #if TGL_FEATURE_RENDER_BITS == 24
 #define RGBPIXEL pp[0] = r, pp[1] = g, pp[2] = b
+#elif TGL_FEATURE_RENDER_BITS == 32
+#define RGBPIXEL *pp = 0xff000000 | color
 #else
 #define RGBPIXEL *pp = color
 #endif

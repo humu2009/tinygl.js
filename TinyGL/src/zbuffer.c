@@ -487,7 +487,7 @@ void memset_RGB24(void *adr,int r, int v, int b,long count)
 }
 
 void ZB_clear(ZBuffer * zb, int clear_z, int z,
-	      int clear_color, int r, int g, int b)
+	      int clear_color, int r, int g, int b, int a)
 {
 #if TGL_FEATURE_RENDER_BITS != 24
     int color;
@@ -505,7 +505,7 @@ void ZB_clear(ZBuffer * zb, int clear_z, int z,
             color = RGB_TO_PIXEL(r, g, b);
 	    memset_s(pp, color, zb->xsize);
 #elif TGL_FEATURE_RENDER_BITS == 32
-            color = RGB_TO_PIXEL(r, g, b);
+            color = ((a << 16) & 0xff000000) | RGB_TO_PIXEL(r, g, b); /* quick and dirty fix for background alpha */
 	    memset_l(pp, color, zb->xsize);
 #elif TGL_FEATURE_RENDER_BITS == 24 
             memset_RGB24(pp,r>>8,g>>8,b>>8,zb->xsize);

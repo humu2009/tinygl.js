@@ -35,6 +35,23 @@ void ZB_fillTriangleFlat(ZBuffer *zb,
     z+=dzdx;					\
 }
 
+#elif TGL_FEATURE_RENDER_BITS == 32
+
+#define DRAW_INIT()				\
+{						\
+  color=0xff000000 | RGB_TO_PIXEL(p2->r,p2->g,p2->b);	\
+}
+  
+#define PUT_PIXEL(_a)				\
+{						\
+    zz=z >> ZB_POINT_Z_FRAC_BITS;		\
+    if (ZCMP(zz,pz[_a])) {				\
+      pp[_a]=color;				\
+      pz[_a]=zz;				\
+    }						\
+    z+=dzdx;					\
+}
+
 #else
 
 #define DRAW_INIT()				\
@@ -51,6 +68,7 @@ void ZB_fillTriangleFlat(ZBuffer *zb,
     }						\
     z+=dzdx;					\
 }
+
 #endif /* TGL_FEATURE_RENDER_BITS == 24 */
 
 #include "ztriangle.h"
@@ -147,6 +165,25 @@ void ZB_fillTriangleSmooth(ZBuffer *zb,
   }									   \
 }
 
+#elif TGL_FEATURE_RENDER_BITS == 32
+
+#define DRAW_INIT() 				\
+{						\
+}
+
+#define PUT_PIXEL(_a)				\
+{						\
+    zz=z >> ZB_POINT_Z_FRAC_BITS;		\
+    if (ZCMP(zz,pz[_a])) {				\
+      pp[_a] = 0xff000000 | RGB_TO_PIXEL(or1, og1, ob1);\
+      pz[_a]=zz;				\
+    }\
+    z+=dzdx;					\
+    og1+=dgdx;					\
+    or1+=drdx;					\
+    ob1+=dbdx;					\
+}
+
 #else
 
 #define DRAW_INIT() 				\
@@ -207,6 +244,20 @@ void ZB_fillTriangleMapping(ZBuffer *zb,
     t+=dtdx;					\
 }
 
+#elif TGL_FEATURE_RENDER_BITS == 32
+
+#define PUT_PIXEL(_a)				\
+{						\
+   zz=z >> ZB_POINT_Z_FRAC_BITS;		\
+     if (ZCMP(zz,pz[_a])) {				\
+       pp[_a]=0xff000000 | texture[((t & 0x3FC00000) | s) >> 14];	\
+       pz[_a]=zz;				\
+    }						\
+    z+=dzdx;					\
+    s+=dsdx;					\
+    t+=dtdx;					\
+}
+
 #else
 
 #define PUT_PIXEL(_a)				\
@@ -243,6 +294,28 @@ void ZB_fillTriangleMappingPerspective(ZBuffer *zb,
   texture=zb->current_texture;			\
 }
 
+#if TGL_FEATURE_RENDER_BITS == 32
+
+#define PUT_PIXEL(_a)				\
+{						\
+   int s,t; \
+   float w; \
+   zz=z >> ZB_POINT_Z_FRAC_BITS;		\
+     if (ZCMP(zz,pz[_a])) {				\
+	   w = 1.0f / winv; \
+       s= (int) (sz * w); \
+       t= (int) (tz * w); \
+       pp[_a]=0xff000000 | texture[((t & 0x3FC00000) | s) >> 14];	\
+       pz[_a]=zz;				\
+    }						\
+    z+=dzdx;					\
+    sz+=dszdx;					\
+    tz+=dtzdx;					\
+	winv+=dwinvdx; \
+}
+
+#else
+
 #define PUT_PIXEL(_a)				\
 {						\
    int s,t; \
@@ -260,6 +333,8 @@ void ZB_fillTriangleMappingPerspective(ZBuffer *zb,
     tz+=dtzdx;					\
 	winv+=dwinvdx; \
 }
+
+#endif
 
 #include "ztriangle.h"
 }
