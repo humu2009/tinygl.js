@@ -1,3 +1,12 @@
+/**
+* program	: glutmech V1.1
+* author	: Simon Parkinson-Bates.
+* E-mail	: sapb@yallara.cs.rmit.edu.au
+* Copyright Simon Parkinson-Bates.
+* "source if freely avaliable to anyone to copy as long as they
+*  acknowledge me in their work."
+*
+**/
 
 /* start of display list definitions */
 const SOLID_MECH_TORSO = 1
@@ -932,7 +941,7 @@ function DrawMech(gl)
 
 function display(gl)
 {
-  gl.clearColor(0.0, 0.0, 0.0, 0.0);
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST);
 
@@ -1419,21 +1428,14 @@ function handle_keydown() {
 
 function loop(gl, fps)
 {
+	function tick() {
+		idle(gl);
+		stats.update();
+		requestAnimationFrame(tick);
+	}
+
 	tick(gl, fps);
 }
-
-
-function tick(gl, fps)
-{
-	stats.begin();
-	idle(gl);
-	stats.end();
-
-	setTimeout(function(){
-		tick(gl, fps);
-	}, 1000.0 / 30);
-}
-
 
 function mech_main(canvas, fps)
 {

@@ -133,7 +133,7 @@ function Init(gl)
 
     InitFishs();
 
-    gl.clearColor(0.0, 0.5, 0.9, 0.0);
+    gl.clearColor(0.0, 0.5, 0.9, 1.0);
 }
 
 
