@@ -253,3 +253,39 @@ unsigned int glGenLists(int range)
   return 0;
 }
 
+void glDeleteLists(unsigned int list, int range)
+{
+  GLContext *c=gl_get_context();
+  GLList *l;
+  GLParamBuffer *ob, *pb;
+  int unended_list_found;
+  int i;
+
+  ob=c->current_op_buffer;
+  unended_list_found = 0;
+
+  for (i=0; i<range; i++) {
+    l=find_list(c, list+i);
+	if (l == NULL)
+	  continue;
+	/* check if the given lists contains an unended list which is currently being used */
+	if (!unended_list_found) {
+	  pb=l->first_op_buffer;
+      while (pb != NULL) {
+        if (pb == ob) {
+		  unended_list_found=1;
+          break;
+	    }
+        pb=pb->next;
+      }
+	}
+	delete_list(c, list+i);
+  }
+
+  /* force switching to the immediate mode */
+  if (unended_list_found) {
+    c->compile_flag=0;
+    c->exec_flag=1;
+  }
+}
+

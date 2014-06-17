@@ -46,6 +46,7 @@
 	var _glViewport = Module.cwrap('glViewport', null, ['number', 'number', 'number', 'number']);
 	var _glFrustum = Module.cwrap('glFrustum', null, ['number', 'number', 'number', 'number', 'number', 'number']);
 	var _glGenLists = Module.cwrap('glGenLists', 'number', ['number']);
+	var _glDeleteLists = Module.cwrap('glDeleteLists', null, ['number', 'number']);
 	var _glIsList = Module.cwrap('glIsList', 'number', ['number']);
 	var _glNewList = Module.cwrap('glNewList', null, ['number', 'number']);
 	var _glEndList = Module.cwrap('glEndList', null, []);
@@ -1560,6 +1561,11 @@
 		genLists: function(range) {
 			_ostgl_make_current(this._tgl_ctx, 0);
 			return _glGenLists(range);
+		}, 
+
+		deleteLists: function(list, range) {
+			_ostgl_make_current(this._tgl_ctx, 0);
+			_glDeleteLists(list, range);
 		}, 
 
 		isList: function(list) {
