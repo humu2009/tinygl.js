@@ -48,7 +48,52 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-var TinyGLRenderingContext = (function() {
+var TinyGLRenderingContext;
+
+function initializeTinyGLRuntime(options) {
+
+	// guarantee TinyGL runtime be initialized only once
+	if (TinyGLRenderingContext)
+		return;
+
+	// define a console to output messages
+	var debug_output = (typeof console) != 'undefined' ? console : {
+		info:  function() {}, 
+		warn:  function() {}, 
+		error: function() {}
+	};
+
+	options = options || {};
+
+	var Module = {};
+
+	if (options.TOTAL_HEAP_MEMORY) {
+		if ((typeof options.TOTAL_HEAP_MEMORY) == 'number') {
+			Module.TOTAL_MEMORY = options.TOTAL_HEAP_MEMORY;
+		} else if ((typeof options.TOTAL_HEAP_MEMORY) == 'string') {
+			var match = /^\+?\b((?:[0-9]*\.)?[0-9]+)([KMG]?)$/.exec(options.TOTAL_HEAP_MEMORY);
+			if (match) {
+				switch (match[2]) {
+				case 'K':
+					Module.TOTAL_MEMORY = Math.floor(parseFloat(match[1]) * 1024);
+					break;
+				case 'M':
+					Module.TOTAL_MEMORY = Math.floor(parseFloat(match[1]) * 1024 * 1024);
+					break;
+				case 'G':
+					Module.TOTAL_MEMORY = Math.floor(parseFloat(match[1]) * 1024 * 1024 * 1024);
+					break;
+				default:
+					Module.TOTAL_MEMORY = Math.floor(parseFloat(match[1]));
+					break;
+				}
+			} else {
+				debug_output.warn('Invalid value for option TOTAL_HEAP_MEMORY');
+			}
+		} else {
+			debug_output.warn('Invalid value for option TOTAL_HEAP_MEMORY');
+		}
+	}
 
 function e(a){throw a;}var i=void 0,j=!0,m=null,n=!1;function p(){return function(){}}var r;r||(r=eval("(function() { try { return Module || {} } catch(e) { return {} } })()"));var aa={},s;for(s in r)r.hasOwnProperty(s)&&(aa[s]=r[s]);var t="object"===typeof process&&"function"===typeof require,ba="object"===typeof window,ca="function"===typeof importScripts,da=!ba&&!t&&!ca;
 if(t){r.print||(r.print=function(a){process.stdout.write(a+"\n")});r.printErr||(r.printErr=function(a){process.stderr.write(a+"\n")});var ea=require("fs"),fa=require("path");r.read=function(a,b){var a=fa.normalize(a),c=ea.readFileSync(a);!c&&a!=fa.resolve(a)&&(a=path.join(__dirname,"..","src",a),c=ea.readFileSync(a));c&&!b&&(c=c.toString());return c};r.readBinary=function(a){return r.read(a,j)};r.load=function(a){ga(read(a))};r.arguments=process.argv.slice(2);module.exports=r}else da?(r.print||(r.print=
@@ -459,12 +504,6 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 		ctx3d.texParameteri(ctx3d.TEXTURE_2D, ctx3d.TEXTURE_WRAP_T, ctx3d.CLAMP_TO_EDGE);
 		return texture;
 	}
-
-	var debug_output = (typeof console) != 'undefined' ? console : {
-		info: function() {}, 
-		warn: function() {}, 
-		error: function() {}
-	};
 
 
 	/**
@@ -1942,7 +1981,7 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 				 *      data:   <Array>/<TypedArray>
 				 * }
 				 * 
-				 * where data should have a size of at least 4 * width * height.
+				 * where data array should have a size of at least 4 * width * height.
 				 */
 				var domElement = arguments[5];
 				var elem_type = '';
@@ -1954,7 +1993,7 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 					elem_type = 'canvas';
 				} else if ((typeof domElement.width) == 'number' && (typeof domElement.height) == 'number' && 
 						   domElement.data && (typeof domElement.data.length) == 'number') {
-					if (domElement.data.length < 4 * width * height) {
+					if (domElement.data.length < 4 * domElement.width * domElement.height) {
 						debug_output.warn('Insufficient data for texImage2D()');
 						return;
 					}
@@ -2170,36 +2209,38 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 	};
 
 
-	/*
-	 * Replace the default HTMLCanvasElement.prototype.getContext() method with our homemade 
-	 * implementation, so that a TinyGL rendering context can be fetched using the following 
-	 * semantics: 
-	 *
-	 *   var canvas = document.getElementById(canvas_id);
-	 *   var gl = canvas.getContext('experimental-tinygl');
-	 *   ...
-	 *
-	 * just as what we do when requiring a canvas2D or a WebGL context.
-	 */
-	if ((typeof HTMLCanvasElement) != 'undefined') {
-		try {
-			var default_get_context_func = HTMLCanvasElement.prototype.getContext;
-			HTMLCanvasElement.prototype.getContext = function() {
-				if (arguments[0] == 'experimental-tinygl') {
-					try {
-						return new TinyGLRenderingContextCtor(this, arguments[1]);
-					} catch (e) {
-						return null;
-					}
-					
+	TinyGLRenderingContext = TinyGLRenderingContextCtor;
+
+}
+
+
+/*
+ * Replace the default HTMLCanvasElement.prototype.getContext() method with our homemade 
+ * implementation, so that a TinyGL rendering context can be fetched using the following 
+ * semantics: 
+ *
+ *   var canvas = document.getElementById(canvas_id);
+ *   var gl = canvas.getContext('experimental-tinygl');
+ *   ...
+ *
+ * just as what we do when requiring a canvas2D or a WebGL context.
+ */
+if ((typeof HTMLCanvasElement) != 'undefined') {
+	try {
+		var default_get_context_func = HTMLCanvasElement.prototype.getContext;
+		HTMLCanvasElement.prototype.getContext = function() {
+			if (arguments[0] == 'experimental-tinygl') {
+				try {
+					// initialize TinyGL runtime if not yet
+					if (!TinyGLRenderingContext)
+						initializeTinyGLRuntime(arguments[1]);
+					return new TinyGLRenderingContext(this, arguments[1]);
+				} catch (e) {
+					return null;
 				}
-				return default_get_context_func.apply(this, arguments);
-			};
-		} catch (e) {
-		}
+			}
+			return default_get_context_func.apply(this, arguments);
+		};
+	} catch (e) {
 	}
-
-
-	return TinyGLRenderingContextCtor;
-
-}) ();
+}

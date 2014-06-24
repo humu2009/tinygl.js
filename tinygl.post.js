@@ -255,12 +255,6 @@
 		return texture;
 	}
 
-	var debug_output = (typeof console) != 'undefined' ? console : {
-		info: function() {}, 
-		warn: function() {}, 
-		error: function() {}
-	};
-
 
 	/**
 	 * Utility classes
@@ -1737,7 +1731,7 @@
 				 *      data:   <Array>/<TypedArray>
 				 * }
 				 * 
-				 * where data should have a size of at least 4 * width * height.
+				 * where data array should have a size of at least 4 * width * height.
 				 */
 				var domElement = arguments[5];
 				var elem_type = '';
@@ -1749,7 +1743,7 @@
 					elem_type = 'canvas';
 				} else if ((typeof domElement.width) == 'number' && (typeof domElement.height) == 'number' && 
 						   domElement.data && (typeof domElement.data.length) == 'number') {
-					if (domElement.data.length < 4 * width * height) {
+					if (domElement.data.length < 4 * domElement.width * domElement.height) {
 						debug_output.warn('Insufficient data for texImage2D()');
 						return;
 					}
@@ -1965,36 +1959,41 @@
 	};
 
 
-	/*
-	 * Replace the default HTMLCanvasElement.prototype.getContext() method with our homemade 
-	 * implementation, so that a TinyGL rendering context can be fetched using the following 
-	 * semantics: 
-	 *
-	 *   var canvas = document.getElementById(canvas_id);
-	 *   var gl = canvas.getContext('experimental-tinygl');
-	 *   ...
-	 *
-	 * just as what we do when requiring a canvas2D or a WebGL context.
+	/**
+	 * Export TinyGL rendering context class
 	 */
-	if ((typeof HTMLCanvasElement) != 'undefined') {
-		try {
-			var default_get_context_func = HTMLCanvasElement.prototype.getContext;
-			HTMLCanvasElement.prototype.getContext = function() {
-				if (arguments[0] == 'experimental-tinygl') {
-					try {
-						return new TinyGLRenderingContextCtor(this, arguments[1]);
-					} catch (e) {
-						return null;
-					}
-					
+	TinyGLRenderingContext = TinyGLRenderingContextCtor;
+
+}
+
+
+/**
+ * Replace the default HTMLCanvasElement.prototype.getContext() method with our homemade 
+ * implementation, so that a TinyGL rendering context can be fetched using the following 
+ * semantics: 
+ *
+ *   var canvas = document.getElementById(canvas_id);
+ *   var gl = canvas.getContext('experimental-tinygl');
+ *   ...
+ *
+ * just as what we do when requiring a canvas2D or a WebGL context.
+ */
+if ((typeof HTMLCanvasElement) != 'undefined') {
+	try {
+		var default_get_context_func = HTMLCanvasElement.prototype.getContext;
+		HTMLCanvasElement.prototype.getContext = function() {
+			if (arguments[0] == 'experimental-tinygl') {
+				try {
+					// initialize TinyGL runtime if not yet
+					if (!TinyGLRenderingContext)
+						initializeTinyGLRuntime(arguments[1]);
+					return new TinyGLRenderingContext(this, arguments[1]);
+				} catch (e) {
+					return null;
 				}
-				return default_get_context_func.apply(this, arguments);
-			};
-		} catch (e) {
-		}
+			}
+			return default_get_context_func.apply(this, arguments);
+		};
+	} catch (e) {
 	}
-
-
-	return TinyGLRenderingContextCtor;
-
-}) ();
+}

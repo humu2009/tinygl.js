@@ -48,5 +48,54 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-var TinyGLRenderingContext = (function() {
+var TinyGLRenderingContext;
+
+function initializeTinyGLRuntime(options) {
+
+	// guarantee TinyGL runtime be initialized only once
+	if (TinyGLRenderingContext)
+		return;
+
+	// define a console for message output
+	var debug_output = (typeof console) != 'undefined' ? console : {
+		info:  function() {}, 
+		warn:  function() {}, 
+		error: function() {}
+	};
+
+	/*
+	 * Parse options
+	 */
+
+	options = options || {};
+
+	var Module = {};
+
+	if (options.TOTAL_HEAP_MEMORY) {
+		if ((typeof options.TOTAL_HEAP_MEMORY) == 'number') {
+			Module.TOTAL_MEMORY = options.TOTAL_HEAP_MEMORY;
+		} else if ((typeof options.TOTAL_HEAP_MEMORY) == 'string') {
+			var match = /^\+?\b((?:[0-9]*\.)?[0-9]+)([KMG]?)$/.exec(options.TOTAL_HEAP_MEMORY);
+			if (match) {
+				switch (match[2]) {
+				case 'K':
+					Module.TOTAL_MEMORY = Math.floor(parseFloat(match[1]) * 1024);
+					break;
+				case 'M':
+					Module.TOTAL_MEMORY = Math.floor(parseFloat(match[1]) * 1024 * 1024);
+					break;
+				case 'G':
+					Module.TOTAL_MEMORY = Math.floor(parseFloat(match[1]) * 1024 * 1024 * 1024);
+					break;
+				default:
+					Module.TOTAL_MEMORY = Math.floor(parseFloat(match[1]));
+					break;
+				}
+			} else {
+				debug_output.warn('Invalid value for option TOTAL_HEAP_MEMORY');
+			}
+		} else {
+			debug_output.warn('Invalid value for option TOTAL_HEAP_MEMORY');
+		}
+	}
 
