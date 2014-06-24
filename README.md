@@ -21,14 +21,7 @@ var canvas = document.getElementById(canvas_id);
 var gl = canvas.getContext('experimental-tinygl');
 ```
 
-The semantics is almost the same with what we do for a Canvas2D or WebGL context.  Alternatively, the following code produces the same result:
-
-```js
-var canvas = document.getElementById(canvas_id);
-var gl = new TinyGLRenderingContext(canvas);
-```
-
-Now that we have the rendering context, let's begin with some basic primitives:
+The semantics is almost the same with what we do for a Canvas2D or WebGL context. Now that we have the rendering context, let's begin with some basic primitives:
 
 ```js
 gl.viewport(0, 0, canvas.width, canvas.height);
@@ -55,7 +48,7 @@ gl.flush();
 gl.swapBuffers();
 ```
 
-This is our first polygon with TinyGL.js:-)  See what it outputs [here](http://humu2009.github.io/tinygl.js/examples/my_first_polygon.html).
+Here comes our first polygon with TinyGL.js:-)  See what it outputs [here](http://humu2009.github.io/tinygl.js/examples/my_first_polygon.html).
 
 Examples
 --------
