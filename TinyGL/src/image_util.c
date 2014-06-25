@@ -18,19 +18,20 @@ void gl_convertRGB_to_5R6G5B(unsigned short *pixmap,unsigned char *rgb,
   }
 }
 
-void gl_convertRGB_to_8A8R8G8B(unsigned int *pixmap, unsigned char *rgb,
+void gl_convertRGBA_to_8A8R8G8B(unsigned int *pixmap, unsigned char *rgba,
                                int xsize, int ysize)
 {
     int i,n;
     unsigned char *p;
     
-    p=rgb;
+    p=rgba;
     n=xsize*ysize;
     for(i=0;i<n;i++) {
         pixmap[i]=(((unsigned int)p[0])<<16) | 
             (((unsigned int)p[1])<<8) | 
-            (((unsigned int)p[2])); 
-        p+=3;
+            (((unsigned int)p[2])) | 
+            (((unsigned int)p[3]) << 24); 
+        p+=4;
     }
 }
 
@@ -121,13 +122,14 @@ void gl_resizeImageNoInterpolate(unsigned char *dest,int xsize_dest,int ysize_de
     for(x=0;x<xsize_dest;x++) {
       xi=x1 >> FRAC_BITS;
       yi=y1 >> FRAC_BITS;
-      pix1=pix_src+(yi*xsize_src+xi)*3;
+      pix1=pix_src+(yi*xsize_src+xi)*4;
 
       pix[0]=pix1[0];
       pix[1]=pix1[1];
       pix[2]=pix1[2];
+	  pix[3]=pix1[3];
 
-      pix+=3;
+      pix+=4;
       x1+=x1inc;
     }
     y1+=y1inc;

@@ -248,10 +248,14 @@ void ZB_fillTriangleMapping(ZBuffer *zb,
 
 #define PUT_PIXEL(_a)				\
 {						\
+   PIXEL texel; \
    zz=z >> ZB_POINT_Z_FRAC_BITS;		\
      if (ZCMP(zz,pz[_a])) {				\
-       pp[_a]=0xff000000 | texture[((t & 0x3FC00000) | s) >> 14];	\
-       pz[_a]=zz;				\
+	   texel=texture[((t & 0x3FC00000) | s) >> 14];	\
+	   if (texel & 0xff000000) { \
+         pp[_a]=texel;	\
+         pz[_a]=zz;				\
+       } \
     }						\
     z+=dzdx;					\
     s+=dsdx;					\
@@ -300,13 +304,17 @@ void ZB_fillTriangleMappingPerspective(ZBuffer *zb,
 {						\
    int s,t; \
    float w; \
+   PIXEL texel; \
    zz=z >> ZB_POINT_Z_FRAC_BITS;		\
      if (ZCMP(zz,pz[_a])) {				\
 	   w = 1.0f / winv; \
        s= (int) (sz * w); \
        t= (int) (tz * w); \
-       pp[_a]=0xff000000 | texture[((t & 0x3FC00000) | s) >> 14];	\
-       pz[_a]=zz;				\
+	   texel=texture[((t & 0x3FC00000) | s) >> 14];	\
+	   if (texel & 0xff000000) { \
+         pp[_a]=texel;          \
+         pz[_a]=zz;				\
+      } \
     }						\
     z+=dzdx;					\
     sz+=dszdx;					\

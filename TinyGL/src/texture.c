@@ -3,6 +3,7 @@
  */
 
 #include "zgl.h"
+#include <string.h>
 
 static GLTexture *find_texture(GLContext *c,int h)
 {
@@ -136,15 +137,15 @@ void glopTexImage2D(GLContext *c,GLParam *p)
   unsigned char *pixels1;
   int do_free;
 
-  if (!(target == GL_TEXTURE_2D && level == 0 && components == 3 && 
-        border == 0 && format == GL_RGB &&
+  if (!(target == GL_TEXTURE_2D && level == 0 && components == 4 && 
+        border == 0 && format == GL_RGBA &&
         type == GL_UNSIGNED_BYTE)) {
     gl_fatal_error("glTexImage2D: combinaison of parameters not handled");
   }
   
   do_free=0;
   if (width != 256 || height != 256) {
-    pixels1 = gl_malloc(256 * 256 * 3);
+    pixels1 = gl_malloc(256 * 256 * 4);
     /* no interpolation is done here to respect the original image aliasing ! */
     gl_resizeImageNoInterpolate(pixels1,256,256,pixels,width,height);
     do_free=1;
@@ -164,16 +165,18 @@ void glopTexImage2D(GLContext *c,GLParam *p)
   im->ysize=height;
 #if TGL_FEATURE_RENDER_BITS == 24 
   if (im->pixmap==NULL) im->pixmap=gl_malloc(width*height*3);
+  /* This does not work now! */
   if(im->pixmap) {
       memcpy(im->pixmap,pixels1,width*height*3);
   }
 #elif TGL_FEATURE_RENDER_BITS == 32
   if (im->pixmap==NULL) im->pixmap=gl_malloc(width*height*4);
   if(im->pixmap) {
-      gl_convertRGB_to_8A8R8G8B(im->pixmap,pixels1,width,height);
+      gl_convertRGBA_to_8A8R8G8B(im->pixmap,pixels1,width,height);
   }
 #elif TGL_FEATURE_RENDER_BITS == 16
   if (im->pixmap==NULL) im->pixmap=gl_malloc(width*height*2);
+  /* This does not work now! */
   if(im->pixmap) {
       gl_convertRGB_to_5R6G5B(im->pixmap,pixels1,width,height);
   }

@@ -144,17 +144,6 @@
 		return util_canvas;
 	}
 
-	function grabPixelsRGBToUint8Array(imgData) {
-		var data = imgData.data;
-		var pixels = new Uint8Array(imgData.width * imgData.height * 3);
-		for (var i=0, j=0, k=0, l=data.length>>2; i<l; i++, j+=3, k+=4) {
-			pixels[j    ] = data[k    ];
-			pixels[j + 1] = data[k + 1];
-			pixels[j + 2] = data[k + 2];
-		}
-		return pixels;
-	}
-
 	function flipPixelsY(pixels, bytes_per_line, gen_new_array) {
 		if (gen_new_array)
 			pixels = new Uint8Array(pixels);
@@ -1771,13 +1760,13 @@
 					return;
 				}
 
-				var pixels = grabPixelsRGBToUint8Array(imgData);
+				var pixels = imgData.data;
 				if (this._attribs.flipTextureY || this._pixelStoreFlipY)
-					flipPixelsY(pixels, 3/* RGB */ * imgData.width);
+					flipPixelsY(pixels, 4/* RGBA */ * imgData.width);
 
 				var buf_ptr = Module._malloc(pixels.length);
 				Module.HEAPU8.set(pixels, buf_ptr);
-				_glTexImage2D(target, level, 3, imgData.width, imgData.height, 0, this.RGB, this.UNSIGNED_BYTE, buf_ptr);
+				_glTexImage2D(target, level, 4, imgData.width, imgData.height, 0, this.RGBA, this.UNSIGNED_BYTE, buf_ptr);
 				Module._free(buf_ptr);
 			}
 		}, 
