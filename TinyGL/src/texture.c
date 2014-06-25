@@ -134,6 +134,7 @@ void glopTexImage2D(GLContext *c,GLParam *p)
   int type=p[8].i;
   void *pixels=p[9].p;
   GLImage *im;
+  int dim;
   unsigned char *pixels1;
   int do_free;
 
@@ -142,15 +143,25 @@ void glopTexImage2D(GLContext *c,GLParam *p)
         type == GL_UNSIGNED_BYTE)) {
     gl_fatal_error("glTexImage2D: combinaison of parameters not handled");
   }
-  
+
+  dim = width > height ? width : height;
+  if      (dim<=8)    dim=8;
+  else if (dim<=16)   dim=16;
+  else if (dim<=32)   dim=32;
+  else if (dim<=64)   dim=64;
+  else if (dim<=128)  dim=128;
+  else if (dim<=256)  dim=256;
+  else if (dim<=512)  dim=512;
+  else                dim=1024;
+
   do_free=0;
-  if (width != 256 || height != 256) {
-    pixels1 = gl_malloc(256 * 256 * 4);
+  if (width != dim || height != dim) {
+    pixels1 = gl_malloc(dim * dim * 4);
     /* no interpolation is done here to respect the original image aliasing ! */
-    gl_resizeImageNoInterpolate(pixels1,256,256,pixels,width,height);
+    gl_resizeImageNoInterpolate(pixels1,dim,dim,pixels,width,height);
     do_free=1;
-    width=256;
-    height=256;
+    width=dim;
+    height=dim;
   } else {
     pixels1=pixels;
   }
@@ -161,8 +172,12 @@ void glopTexImage2D(GLContext *c,GLParam *p)
 	  gl_free(im->pixmap);
 	  im->pixmap=NULL;
   }
+
   im->xsize=width;
   im->ysize=height;
+  im->t_mult=width*height;
+  im->t_mask=(unsigned int)((height-1)*width);
+
 #if TGL_FEATURE_RENDER_BITS == 24 
   if (im->pixmap==NULL) im->pixmap=gl_malloc(width*height*3);
   /* This does not work now! */

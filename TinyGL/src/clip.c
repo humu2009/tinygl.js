@@ -13,6 +13,7 @@
 void gl_transform_to_viewport(GLContext *c,GLVertex *v)
 {
   float winv;
+  GLImage* im;
 
   /* coordinates */
   winv=1.0f / v->pc.W;
@@ -41,10 +42,9 @@ void gl_transform_to_viewport(GLContext *c,GLVertex *v)
   /* texture */
 
   if (c->texture_2d_enabled) {
-    v->zp.s=(int)(v->tex_coord.X * (ZB_POINT_S_MAX - ZB_POINT_S_MIN) 
-                  + ZB_POINT_S_MIN);
-    v->zp.t=(int)(v->tex_coord.Y * (ZB_POINT_T_MAX - ZB_POINT_T_MIN) 
-                  + ZB_POINT_T_MIN);
+	im=&c->current_texture->images[0];
+    v->zp.s=(int)(v->tex_coord.X * im->xsize);
+    v->zp.t=(int)(v->tex_coord.Y * im->t_mult);
   }
 }
 
@@ -405,7 +405,7 @@ void gl_draw_triangle_fill(GLContext *c,
 #ifdef PROFILE
     count_triangles_textured++;
 #endif
-    ZB_setTexture(c->zb,c->current_texture->images[0].pixmap);
+    ZB_setTexture(c->zb,c->current_texture->images[0].pixmap,c->current_texture->images[0].t_mask);
     ZB_fillTriangleMappingPerspective(c->zb,&p0->zp,&p1->zp,&p2->zp);
   } else if (c->current_shade_model == GL_SMOOTH) {
     ZB_fillTriangleSmooth(c->zb,&p0->zp,&p1->zp,&p2->zp);

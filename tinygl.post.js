@@ -119,7 +119,7 @@
 
 	var util_canvas = null;
 
-	function getUtilCanvas(width, height) {
+	function getUtilCanvas(width, height, auto_align_dimensions) {
 		var isClean = false;
 		if (!util_canvas) {
 			isClean = true;
@@ -129,6 +129,29 @@
 
 		if (!util_canvas)
 			return null;
+
+		// adjust width and height to be the same size that is power of two
+		if (auto_align_dimensions == true) {
+			var dim = Math.max(width, height);
+			if (dim <= 8)
+				dim = 8;
+			else if (dim <= 16)
+				dim = 16;
+			else if (dim <= 32)
+				dim = 32;
+			else if (dim <= 64)
+				dim = 64;
+			else if (dim <= 128)
+				dim = 128;
+			else if (dim <= 256)
+				dim = 256;
+			else if (dim <= 512)
+				dim = 512;
+			else
+				dim = 1024;
+
+			width = height = dim;
+		}
 
 		if (util_canvas.width != width || util_canvas.height != height) {
 			util_canvas.width  = width;
@@ -1693,10 +1716,18 @@
 				 *
 				 * where pixels can be an array or a typed array.
 				 */
+
+				// check if all imputs comply with TinyGL's limitations
+				if ( target != this.TEXTURE_2D || level != 0 || components != 4 || border != 0 || 
+					 format != this.RGBA || type != this.UNSIGNED_BYTE ) {
+					debug_output.warn('Unsupported combination of inputs for texImage2D()');
+					return;
+				}
+
 				if ((typeof pixels.buffer) != 'undefined')
 					pixels = new Uint8Array(pixels.buffer);
 				if (this._attribs.flipTextureY || this._pixelStoreFlipY)
-					pixels = flipPixelsY(pixels, pixels.length, true);
+					pixels = flipPixelsY(pixels, 4/* RGBA */ * width, true);
 				if ((typeof pixels.buffer) != 'undefined')
 					pixels = new Uint8Array(pixels.buffer);
 
@@ -1743,7 +1774,7 @@
 				switch (elem_type) {
 				case 'image':
 				case 'video':
-					var cv = getUtilCanvas(/*domElement.width, domElement.height*/ 256, 256);
+					var cv = getUtilCanvas(domElement.width, domElement.height, true);
 					var ctx2d = cv.getContext('2d');
 					ctx2d.drawImage(domElement, 0, 0, cv.width, cv.height);
 					imgData = ctx2d.getImageData(0, 0, cv.width, cv.height);

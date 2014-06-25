@@ -97,5 +97,8 @@ function initializeTinyGLRuntime(options) {
 		} else {
 			debug_output.warn('Invalid value for option TOTAL_HEAP_MEMORY');
 		}
+	} else {
+		// default to 32M heap memory following Emscripten's suggestion
+		Module.TOTAL_MEMORY = 32 * 1024 * 1024;
 	}
 

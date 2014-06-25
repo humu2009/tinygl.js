@@ -128,6 +128,8 @@ typedef struct GLVertex {
 typedef struct GLImage {
   void *pixmap;
   int xsize,ysize;
+  int t_mult;
+  unsigned int t_mask;
 } GLImage;
 
 /* textures */
