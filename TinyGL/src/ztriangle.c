@@ -208,17 +208,18 @@ void ZB_fillTriangleSmooth(ZBuffer *zb,
 #include "ztriangle.h"
 }
 
-void ZB_setTexture(ZBuffer *zb, PIXEL *texture, unsigned int tmask)
+void ZB_setTexture(ZBuffer *zb, PIXEL *texture, unsigned int sbound, unsigned int tbound)
 {
     zb->current_texture=texture;
-	zb->t_mask = tmask;
+	zb->s_bound=sbound;
+	zb->t_bound=tbound;
 }
 
 void ZB_fillTriangleMapping(ZBuffer *zb,
 			    ZBufferPoint *p0,ZBufferPoint *p1,ZBufferPoint *p2)
 {
     PIXEL *texture;
-	unsigned int t_mask;
+	unsigned int s_bound, t_bound;
 
 #define INTERP_Z
 #define INTERP_ST
@@ -226,7 +227,8 @@ void ZB_fillTriangleMapping(ZBuffer *zb,
 #define DRAW_INIT()				\
 {						\
   texture=zb->current_texture;			\
-  t_mask=zb->t_mask; \
+  s_bound=zb->s_bound; \
+  t_bound=zb->t_bound; \
 }
 
 #if TGL_FEATURE_RENDER_BITS == 24
@@ -254,7 +256,7 @@ void ZB_fillTriangleMapping(ZBuffer *zb,
    PIXEL texel; \
    zz=z >> ZB_POINT_Z_FRAC_BITS;		\
      if (ZCMP(zz,pz[_a])) {				\
-	   texel=texture[(t & t_mask) | s];;	\
+	   texel=texture[(t & t_bound) | (s & s_bound)];	\
 	   if (texel & 0xff000000) { \
          pp[_a]=texel;	\
          pz[_a]=zz;				\
@@ -271,7 +273,7 @@ void ZB_fillTriangleMapping(ZBuffer *zb,
 {						\
    zz=z >> ZB_POINT_Z_FRAC_BITS;		\
      if (ZCMP(zz,pz[_a])) {				\
-       pp[_a]=texture[(t & t_mask) | s];;	\
+       pp[_a]=texture[(t & t_bound) | (s & s_bound)];	\
        pz[_a]=zz;				\
     }						\
     z+=dzdx;					\
@@ -292,7 +294,7 @@ void ZB_fillTriangleMappingPerspective(ZBuffer *zb,
                             ZBufferPoint *p0,ZBufferPoint *p1,ZBufferPoint *p2)
 {
     PIXEL *texture;
-	unsigned int t_mask;
+	unsigned int s_bound, t_bound;
 
 #define INTERP_Z
 #define INTERP_STZ
@@ -300,7 +302,8 @@ void ZB_fillTriangleMappingPerspective(ZBuffer *zb,
 #define DRAW_INIT()				\
 {						\
   texture=zb->current_texture;			\
-  t_mask=zb->t_mask; \
+  s_bound=zb->s_bound; \
+  t_bound=zb->t_bound; \
 }
 
 #if TGL_FEATURE_RENDER_BITS == 32
@@ -315,7 +318,7 @@ void ZB_fillTriangleMappingPerspective(ZBuffer *zb,
 	   w = 1.0f / winv; \
        s= (int) (sz * w); \
        t= (int) (tz * w); \
-	   texel=texture[(t & t_mask) | s];	\
+	   texel=texture[(t & t_bound) | (s & s_bound)];	\
 	   if (texel & 0xff000000) { \
          pp[_a]=texel;          \
          pz[_a]=zz;				\
@@ -338,7 +341,7 @@ void ZB_fillTriangleMappingPerspective(ZBuffer *zb,
 	   w = 1.0f / winv; \
        s= (int) (sz * w); \
        t= (int) (tz * w); \
-       pp[_a]=texture[(t & t_mask) | s];;	\
+       pp[_a]=texture[(t & t_bound) | (s & s_bound)];	\
        pz[_a]=zz;				\
     }						\
     z+=dzdx;					\

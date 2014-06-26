@@ -144,6 +144,7 @@ void glopTexImage2D(GLContext *c,GLParam *p)
     gl_fatal_error("glTexImage2D: combinaison of parameters not handled");
   }
 
+  /* select proper dimensions for this texture */
   dim = width > height ? width : height;
   if      (dim<=8)    dim=8;
   else if (dim<=16)   dim=16;
@@ -175,8 +176,8 @@ void glopTexImage2D(GLContext *c,GLParam *p)
 
   im->xsize=width;
   im->ysize=height;
-  im->t_mult=width*height;
-  im->t_mask=(unsigned int)((height-1)*width);
+  im->s_bound = (unsigned int)(width-1);
+  im->t_bound = (unsigned int)((height-1)*width);
 
 #if TGL_FEATURE_RENDER_BITS == 24 
   if (im->pixmap==NULL) im->pixmap=gl_malloc(width*height*3);

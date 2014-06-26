@@ -84,7 +84,8 @@ typedef struct {
     unsigned char *dctable;
     int *ctable;
     PIXEL *current_texture;
-	unsigned int t_mask;
+	unsigned int s_bound;
+	unsigned int t_bound;
 } ZBuffer;
 
 typedef struct {
@@ -130,7 +131,7 @@ void ZB_line_z(ZBuffer * zb, ZBufferPoint * p1, ZBufferPoint * p2);
 
 /* ztriangle.c */
 
-void ZB_setTexture(ZBuffer *zb, PIXEL *texture, unsigned int tmask);
+void ZB_setTexture(ZBuffer *zb, PIXEL *texture, unsigned int sbound, unsigned int tbound);
 
 void ZB_fillTriangleFlat(ZBuffer *zb,
 		 ZBufferPoint *p1,ZBufferPoint *p2,ZBufferPoint *p3);

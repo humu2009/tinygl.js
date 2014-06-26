@@ -130,7 +130,7 @@
 		if (!util_canvas)
 			return null;
 
-		// adjust width and height to be the same size that is power of two
+		// adjust width and height to be of the same size that is power of two
 		if (auto_align_dimensions == true) {
 			var dim = Math.max(width, height);
 			if (dim <= 8)
@@ -1717,7 +1717,8 @@
 				 * where pixels can be an array or a typed array.
 				 */
 
-				// check if all imputs comply with TinyGL's limitations
+				// TinyGL only accepts one simple subset of combinations of inputs for texImage2D().
+				// We check if all the imputs comply with the limitation.
 				if ( target != this.TEXTURE_2D || level != 0 || components != 4 || border != 0 || 
 					 format != this.RGBA || type != this.UNSIGNED_BYTE ) {
 					debug_output.warn('Unsupported combination of inputs for texImage2D()');
@@ -1735,6 +1736,7 @@
 				Module.HEAPU8.set(pixels, buf_ptr);
 				_glTexImage2D(target, level, components, width, height, border, format, type, buf_ptr);
 				Module._free(buf_ptr);
+
 			} else if (arguments.length == 6) {
 				/*
 				 * Signature 2: 
@@ -1753,6 +1755,7 @@
 				 * 
 				 * where data array should have a size of at least 4 * width * height.
 				 */
+
 				var domElement = arguments[5];
 				var elem_type = '';
 				if ((typeof HTMLImageElement) != 'undefined' && (domElement instanceof HTMLImageElement)) {
@@ -1781,6 +1784,7 @@
 					break;
 				case 'canvas':
 					var ctx2d = domElement.getContext('2d');
+					//TODO: shall we also resample the canvas input?
 					imgData = ctx2d.getImageData(0, 0, domElement.width, domElement.height);
 					break;
 				case 'ImageData':
@@ -1996,7 +2000,8 @@
  *   var gl = canvas.getContext('experimental-tinygl');
  *   ...
  *
- * just as what we do when requiring a canvas2D or a WebGL context.
+ * just as what we do when requiring a canvas2D or a WebGL context. The function call will
+ * automatically initialize the TinyGL runtime if it is not initialized yet.
  */
 if ((typeof HTMLCanvasElement) != 'undefined') {
 	try {
