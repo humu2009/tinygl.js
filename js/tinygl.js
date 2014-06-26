@@ -2036,7 +2036,10 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 				case 'video':
 					var cv = getUtilCanvas(domElement.width, domElement.height, true);
 					var ctx2d = cv.getContext('2d');
-					ctx2d.drawImage(domElement, 0, 0, cv.width, cv.height);
+					try {
+						ctx2d.drawImage(domElement, 0, 0, cv.width, cv.height);
+					} catch (e) {
+					}
 					imgData = ctx2d.getImageData(0, 0, cv.width, cv.height);
 					break;
 				case 'canvas':
