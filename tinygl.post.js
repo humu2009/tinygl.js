@@ -45,6 +45,7 @@
 	var _glScalef = Module.cwrap('glScalef', null, ['number', 'number', 'number']);
 	var _glViewport = Module.cwrap('glViewport', null, ['number', 'number', 'number', 'number']);
 	var _glFrustum = Module.cwrap('glFrustum', null, ['number', 'number', 'number', 'number', 'number', 'number']);
+	var _glOrtho = Module.cwrap('glOrtho', null, ['number', 'number', 'number', 'number', 'number', 'number']);
 	var _glGenLists = Module.cwrap('glGenLists', 'number', ['number']);
 	var _glDeleteLists = Module.cwrap('glDeleteLists', null, ['number', 'number']);
 	var _glIsList = Module.cwrap('glIsList', 'number', ['number']);
@@ -82,9 +83,11 @@
 	var _glEnableClientState = Module.cwrap('glEnableClientState', null, ['number']);
 	var _glDisableClientState = Module.cwrap('glDisableClientState', null, ['number']);
 	var _glArrayElement = Module.cwrap('glArrayElement', null, ['number']);
+	var _glDrawArrays = Module.cwrap('glDrawArrays', null, ['number', 'number', 'number']);
+	var _glDrawElements = Module.cwrap('glDrawElements', null, ['number', 'number', 'number', 'number']);
 	var _glVertexPointer = Module.cwrap('glVertexPointer', null, ['number', 'number', 'number', 'number']);
 	var _glColorPointer = Module.cwrap('glColorPointer', null, ['number', 'number', 'number', 'number']);
-	var _glNormalPointer = Module.cwrap('glNormalPointer', null, ['number', 'number', 'number', 'number']);
+	var _glNormalPointer = Module.cwrap('glNormalPointer', null, ['number', 'number', 'number']);
 	var _glTexCoordPointer = Module.cwrap('glTexCoordPointer', null, ['number', 'number', 'number', 'number']);
 	var _glPolygonOffset = Module.cwrap('glPolygonOffset', null, ['number', 'number']);
 	var _glDebug = Module.cwrap('glDebug', null, ['number']);
@@ -112,10 +115,33 @@
 		return Module._malloc(new_framebuf_size);
 	}
 
-	function calcAdjustedWidth(width) {
+	function calculateAdjustedWidth(width) {
 		// TinyGL requires the width of a framebuffer to be multiples of 4
 		return width & ~3;
 	}
+
+	function calculateNextPowerOfTwo(n) {
+		if (n <= 8)
+			return 8;
+		else if (n <= 16)
+			return 16;
+		else if (n <= 32)
+			return 32;
+		else if (n <= 64)
+			return 64;
+		else if (n <= 128)
+			return 128;
+		else if (n <= 256)
+			return 256;
+		else if (n <= 512)
+			return 512;
+		else
+			return 1024;
+	}
+
+	function isArrayAllocatedOnHeap(arr) {
+		return ((typeof arr.buffer) != 'undefined') && (arr.buffer == Module.HEAPU8.buffer);
+	};
 
 	var util_canvas = null;
 
@@ -130,27 +156,12 @@
 		if (!util_canvas)
 			return null;
 
-		// adjust width and height to be of the same size that is power of two
+		// adjust width and height to be next highest power of 2
+		// the maximum available dimensions for TinyGL are 1024x1024
+		//
 		if (auto_align_dimensions == true) {
-			var dim = Math.max(width, height);
-			if (dim <= 8)
-				dim = 8;
-			else if (dim <= 16)
-				dim = 16;
-			else if (dim <= 32)
-				dim = 32;
-			else if (dim <= 64)
-				dim = 64;
-			else if (dim <= 128)
-				dim = 128;
-			else if (dim <= 256)
-				dim = 256;
-			else if (dim <= 512)
-				dim = 512;
-			else
-				dim = 1024;
-
-			width = height = dim;
+			width  = calculateNextPowerOfTwo(width);
+			height = calculateNextPowerOfTwo(height);
 		}
 
 		if (util_canvas.width != width || util_canvas.height != height) {
@@ -352,7 +363,7 @@
 			'', 
 			'void main(void) {', 
 			'	vec4 texel = texture2D(s_canvasTex, v_texCoord);', 
-			'	gl_FragColor = vec4(texel.b, texel.g, texel.r, 1.0);', 
+			'	gl_FragColor = vec4(texel.b, texel.g, texel.r, texel.a);', 
 			'}'
 		].join('\n');
 
@@ -446,7 +457,7 @@
 		this._surface = canvas;
 		this._attribs = attribs || {};
 
-		var w = calcAdjustedWidth(canvas.width);
+		var w = calculateAdjustedWidth(canvas.width);
 		var h = canvas.height;
 
 		this._frame_buf_ptr = reallocateFramebuffer(w, h, 0);
@@ -456,14 +467,14 @@
 		this._tgl_ctx = createTGLContext(w, h, this._frame_buf_ptr);
 
 		this._driver = null;
-		if (this._attribs.driver != 'webgl') {
+		if (this._attribs.surfaceDriver != 'webgl') {
 			try {
 				this._driver = new Canvas2DSurfaceDriver(canvas, w, h);
 			} catch (e) {
 			}
 		}
 		if (!this._driver) {
-			if (this._attribs.driver == '2d')
+			if (this._attribs.surfaceDriver == '2d')
 				throw 'Failed to initialize TinyGL with 2D context.';
 
 			try {
@@ -472,21 +483,31 @@
 			}
 		}
 		if (!this._driver) {
-			if (this._attribs.driver == 'webgl')
+			if (this._attribs.surfaceDriver == 'webgl')
 				throw 'Failed to initialize TinyGL with WebGL context.';
 			else
 				throw 'Failed to initialize TinyGL, neither 2D context nor WebGL context is available.';
 		}
 
+		this._temp_matrix_buf_ptr = Module._malloc(16 * BYTES_PER_FLOAT32);
+
 		this._is_select_mode = false;
-		this._select_output_buf = null;
 		this._select_internal_buf_ptr = 0;
-		this._select_buf_length = 0;
+		this._select_internal_buf_size = 0;
+		this._select_output_buf = null;
+		this._select_output_buf_length = 0;
 
 		this._array_coord_buf_ptr = 0;
 		this._array_color_buf_ptr = 0;
 		this._array_normal_buf_ptr = 0;
 		this._array_texcoord_buf_ptr = 0;
+		this._array_coord_buf_size = 0;
+		this._array_color_buf_size = 0;
+		this._array_normal_buf_size = 0;
+		this._array_texcoord_buf_size = 0;
+
+		this._element_index_buf_ptr = 0;
+		this._element_index_buf_size = 0;
 
 		// local cache of the viewport
 		this._vp = {
@@ -1477,20 +1498,16 @@
 		}, 
 
 		loadMatrixf: function(m) {
-			var buf_ptr = Module._malloc(m.length * BYTES_PER_FLOAT32);
-			Module.HEAPF32.set(m, buf_ptr / BYTES_PER_FLOAT32);
+			Module.HEAPF32.set(m, this._temp_matrix_buf_ptr / BYTES_PER_FLOAT32);
 			//console.info(new Float32Array(Module.HEAPF32.subarray(buf_ptr >> 2, (buf_ptr >> 2) + 16)));
 			_ostgl_make_current(this._tgl_ctx, 0);
-			_glLoadMatrixf(buf_ptr);
-			Module._free(buf_ptr);
+			_glLoadMatrixf(this._temp_matrix_buf_ptr);
 		}, 
 
 		multMatrixf: function(m) {
-			var buf_ptr = Module._malloc(m.length * BYTES_PER_FLOAT32);
-			Module.HEAPF32.set(m, buf_ptr / BYTES_PER_FLOAT32);
+			Module.HEAPF32.set(m, this._temp_matrix_buf_ptr / BYTES_PER_FLOAT32);
 			_ostgl_make_current(this._tgl_ctx, 0);
-			_glMultMatrixf(buf_ptr);
-			Module._free(buf_ptr);
+			_glMultMatrixf(this._temp_matrix_buf_ptr);
 		}, 
 
 		pushMatrix: function() {
@@ -1522,7 +1539,7 @@
 			_ostgl_make_current(this._tgl_ctx, 0);
 
 			// calculate new framebuffer dimensions from the given viewport
-			var req_framebuf_width  = calcAdjustedWidth(x + width);
+			var req_framebuf_width  = calculateAdjustedWidth(x + width);
 			var req_framebuf_height = y + height;
 
 			// resize and reallocate framebuffer if necessary
@@ -1553,6 +1570,11 @@
 			};
 
 			_glViewport(x, y, width, height);
+		}, 
+
+		ortho: function(left, right, bottom, top, near, far) {
+			_ostgl_make_current(this._tgl_ctx, 0);
+			_glOrtho(left, right, bottom, top, near, far);
 		}, 
 
 		frustum: function(left, right, bottom, top, near, far) {
@@ -1626,7 +1648,7 @@
 			case this.RENDER:
 				// copy selection results from heap memory to output buffer on exit of selection mode
 				if (this._is_select_mode) {
-					for (var i=0, ptr=this._select_internal_buf_ptr; i<this._select_buf_length; i++, ptr+=BYTES_PER_UINT32) {
+					for (var i=0, ptr=this._select_internal_buf_ptr; i<this._select_output_buf_length; i++, ptr+=BYTES_PER_UINT32) {
 						this._select_output_buf[i] = Module.getValue(ptr, 'i32');
 					}
 				}
@@ -1640,20 +1662,23 @@
 		}, 
 
 		selectBuffer: function(size, buf) {
-			// reallocate heap memory to store selection results
-			if (this._select_internal_buf_ptr)
-				Module._free(this._select_internal_buf_ptr);
-			this._select_internal_buf_ptr = Module._malloc(size * BYTES_PER_UINT32);
-			// clear memory block
-			Module._memset(this._select_internal_buf_ptr, 0, size * BYTES_PER_UINT32);
+			// enlarge internal buffer if necessary to store selection results
+			if (this._select_internal_buf_size < size * BYTES_PER_UINT32) {
+				if (this._select_internal_buf_ptr)
+					Module._free(this._select_internal_buf_ptr);
+				this._select_internal_buf_size = size * BYTES_PER_UINT32;
+				this._select_internal_buf_ptr = Module._malloc(this._select_internal_buf_size);
+			}
+			// clear internal buffer
+			Module._memset(this._select_internal_buf_ptr, 0, this._select_internal_buf_size);
 
 			_ostgl_make_current(this._tgl_ctx, 0);
 			_glSelectBuffer(size, this._select_internal_buf_ptr);
 
-			// The results will be copied to the given array on next call 
-			// of renderMode() method with mode GL_RENDER.
+			// The selection results will be copied to the given output array 
+			// on next call of renderMode() with mode GL_RENDER.
 			this._select_output_buf = buf;
-			this._select_buf_length = size;
+			this._select_output_buf_length = size;
 		}, 
 
 		initNames: function() {
@@ -1678,7 +1703,7 @@
 
 		// Textures
 		//
-		//TODO: consider wrapping textures as objects like that in WebGL implementation
+		//TODO: consider wrapping textures as objects like those in WebGL
 
 		genTextures: function(num, ids) {
 			ids = ids || new Uint32Array(num);
@@ -1895,11 +1920,11 @@
 
 		getIntegerv: function(pname, v) {
 			v = v || new Int32Array(4);
-			var buf_ptr = Module._malloc(v.length * Int32Array.prototype.BYTES_PER_ELEMENT);
-			Module._memset(buf_ptr, 0, v.length * Int32Array.prototype.BYTES_PER_ELEMENT);
+			var buf_ptr = Module._malloc(v.length * BYTES_PER_INT32);
+			Module._memset(buf_ptr, 0, v.length * BYTES_PER_INT32);
 			_ostgl_make_current(this._tgl_ctx, 0);
 			_glGetIntegerv(pname, buf_ptr);
-			for (var i=0, ptr=buf_ptr; i<v.length; i++, ptr+=Int32Array.prototype.BYTES_PER_ELEMENT) {
+			for (var i=0, ptr=buf_ptr; i<v.length; i++, ptr+=BYTES_PER_INT32) {
 				v[i] = Module.getValue(ptr, 'i32');
 			}
 			Module._free(buf_ptr);
@@ -1942,24 +1967,162 @@
 			_glArrayElement(i);
 		}, 
 
-		vertexPointer: function(size, type, stride, pointer) {
+		drawArrays: function(mode, first, count) {
 			_ostgl_make_current(this._tgl_ctx, 0);
-			//not implemented yet
+			_glDrawArrays(mode, first, count);
 		}, 
 
-		colorPointer: function(size, type, stride, pointer) {
+		drawElements: function(mode, count, type, indices) {
 			_ostgl_make_current(this._tgl_ctx, 0);
-			//not implemented yet
+
+			// TinyGL's implementation of glDrawElements() accepts both GL_UNSIGNED_SHORT 
+			// and GL_UNSIGNED_INT, the latter of which is nonstandard, as type of the 
+			// given indices. This implies that the maximum index (65535) restriction will 
+			// not be applied when type == GL_UNSIGNED_INT thus any integer number that is 
+			// >= 0 can be used as a valid index value.
+			if (type != this.UNSIGNED_SHORT && type != this.UNSIGNED_INT) {
+				debug_output.warn('Unsupported type for drawElements()');
+				return;
+			}
+
+			var bytesPerElement;
+			switch (type) {
+			case this.UNSIGNED_INT:
+				bytesPerElement = BYTES_PER_UINT32;
+				break;
+			case this.UNSIGNED_SHORT:
+			default:
+				bytesPerElement = BYTES_PER_UINT16;
+				break;
+			}
+
+			if ( isArrayAllocatedOnHeap(indices) && (indices.BYTES_PER_ELEMENT == bytesPerElement) )
+				_glDrawElements(mode, count, type, indices.byteOffset);
+			else {
+				// enlarge index buffer if necessary to accept all the indices
+				if (this._element_index_buf_size < indices.length * bytesPerElement) {
+					if (this._element_index_buf_ptr)
+						Module._free(this._element_index_buf_ptr);
+					this._element_index_buf_size = indices.length * bytesPerElement;
+					this._element_index_buf_ptr = Module._malloc(this._element_index_buf_size);
+				}
+				// copy indices into the internal buffer on heap
+				switch (type) {
+				case this.UNSIGNED_INT:
+					Module.HEAPU32.set(indices, this._element_index_buf_ptr / bytesPerElement);
+					break;
+				case this.UNSIGNED_SHORT:
+				default:
+					Module.HEAPU16.set(indices, this._element_index_buf_ptr / bytesPerElement);
+					break;
+				}
+
+				_glDrawElements(mode, count, type, this._element_index_buf_ptr);
+			}
 		}, 
 
-		normalPointer: function(size, type, stride, pointer) {
+		vertexPointer: function(size, type, stride, data) {
 			_ostgl_make_current(this._tgl_ctx, 0);
-			//not implemented yet
+
+			// Check if the inputs comply with TinyGL's limitation.
+			if (type != this.FLOAT || stride != 0) {
+				debug_output.warn('Unsupported combination of inputs for vertexPointer()');
+				return;
+			}
+
+			if ( isArrayAllocatedOnHeap(data) && (data instanceof Float32Array) )
+				_glVertexPointer(size, type, stride, data.byteOffset);
+			else {
+				// enlarge coord buffer if necessary to accept all the elements
+				if (this._array_coord_buf_size < data.length * BYTES_PER_FLOAT32) {
+					if (this._array_coord_buf_ptr)
+						Module._free(this._array_coord_buf_ptr);
+					this._array_coord_buf_size = data.length * BYTES_PER_FLOAT32;
+					this._array_coord_buf_ptr = Module._malloc(this._array_coord_buf_size);
+				}
+				// copy elements into heap memory
+				Module.HEAPF32.set(data, this._array_coord_buf_ptr / BYTES_PER_FLOAT32);
+
+				_glVertexPointer(size, type, stride, this._array_coord_buf_ptr);
+			}
 		}, 
 
-		texCoordPointer: function(size, type, stride, pointer) {
+		colorPointer: function(size, type, stride, data) {
 			_ostgl_make_current(this._tgl_ctx, 0);
-			//not implemented yet
+
+			// Check if the inputs comply with TinyGL's limitation.
+			if (type != this.FLOAT || stride != 0) {
+				debug_output.warn('Unsupported combination of inputs for colorPointer()');
+				return;
+			}
+
+			if ( isArrayAllocatedOnHeap(data) && (data instanceof Float32Array) )
+				_glColorPointer(size, type, stride, data.byteOffset);
+			else {
+				// enlarge color buffer if necessary to accept all the elements
+				if (this._array_color_buf_size < data.length * BYTES_PER_FLOAT32) {
+					if (this._array_color_buf_ptr)
+						Module._free(this._array_color_buf_ptr);
+					this._array_color_buf_size = data.length * BYTES_PER_FLOAT32;
+					this._array_color_buf_ptr = Module._malloc(this._array_color_buf_size);
+				}
+				// copy elements into heap memory
+				Module.HEAPF32.set(data, this._array_color_buf_ptr / BYTES_PER_FLOAT32);
+
+				_glColorPointer(size, type, stride, this._array_color_buf_ptr);
+			}
+		}, 
+
+		normalPointer: function(type, stride, data) {
+			_ostgl_make_current(this._tgl_ctx, 0);
+
+			// Check if the inputs comply with TinyGL's limitation.
+			if (type != this.FLOAT || stride != 0) {
+				debug_output.warn('Unsupported combination of inputs for normalPointer()');
+				return;
+			}
+
+			if ( isArrayAllocatedOnHeap(data) && (data instanceof Float32Array) )
+				_glNormalPointer(type, stride, data.byteOffset);
+			else {
+				// enlarge normal buffer if necessary to accept all the elements
+				if (this._array_normal_buf_size < data.length * BYTES_PER_FLOAT32) {
+					if (this._array_normal_buf_ptr)
+						Module._free(this._array_normal_buf_ptr);
+					this._array_normal_buf_size = data.length * BYTES_PER_FLOAT32;
+					this._array_normal_buf_ptr = Module._malloc(this._array_normal_buf_size);
+				}
+				// copy elements into heap memory
+				Module.HEAPF32.set(data, this._array_normal_buf_ptr / BYTES_PER_FLOAT32);
+
+				_glNormalPointer(type, stride, this._array_normal_buf_ptr);
+			}
+		}, 
+
+		texCoordPointer: function(size, type, stride, data) {
+			_ostgl_make_current(this._tgl_ctx, 0);
+
+			// Check if the inputs comply with TinyGL's limitation.
+			if (type != this.FLOAT || stride != 0) {
+				debug_output.warn('Unsupported combination of inputs for texCoordPointer()');
+				return;
+			}
+
+			if ( isArrayAllocatedOnHeap(data) && (data instanceof Float32Array) )
+				_glTexCoordPointer(size, type, stride, data.byteOffset);
+			else {
+				// enlarge texcoord buffer if necessary to accept all the elements
+				if (this._array_texcoord_buf_size < data.length * BYTES_PER_FLOAT32) {
+					if (this._array_texcoord_buf_ptr)
+						Module._free(this._array_texcoord_buf_ptr);
+					this._array_texcoord_buf_size = data.length * BYTES_PER_FLOAT32;
+					this._array_texcoord_buf_ptr = Module._malloc(this._array_texcoord_buf_size);
+				}
+				// copy elements into heap memory
+				Module.HEAPF32.set(data, this._array_texcoord_buf_ptr / BYTES_PER_FLOAT32);
+
+				_glTexCoordPointer(size, type, stride, this._array_texcoord_buf_ptr);
+			}
 		}, 
 
 		// opengl 1.2 polygon offset
