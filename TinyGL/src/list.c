@@ -282,7 +282,7 @@ void glDeleteLists(unsigned int list, int range)
 	delete_list(c, list+i);
   }
 
-  /* force switching to the immediate mode */
+  /* force to switch to immediate mode */
   if (unended_list_found) {
     c->compile_flag=0;
     c->exec_flag=1;

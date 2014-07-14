@@ -128,6 +128,7 @@ typedef struct GLVertex {
 typedef struct GLImage {
   void *pixmap;
   int xsize,ysize;
+  unsigned int xsize_log2;
   unsigned int s_bound;
   unsigned int t_bound;
 } GLImage;
@@ -139,6 +140,8 @@ typedef struct GLImage {
 typedef struct GLTexture {
   GLImage images[MAX_TEXTURE_LEVELS];
   int handle;
+  int mag_filter;
+  int min_filter;
   struct GLTexture *next,*prev;
 } GLTexture;
 
@@ -274,6 +277,9 @@ typedef struct GLContext {
   /* resize viewport function */
   int (*gl_resize_viewport)(struct GLContext *c,int *xsize,int *ysize);
 
+  /* blending */
+  int blend_enabled;
+
   /* depth test */
   int depth_test;
 } GLContext;
@@ -321,6 +327,7 @@ void gl_resizeImage(unsigned char *dest,int xsize_dest,int ysize_dest,
                     unsigned char *src,int xsize_src,int ysize_src);
 void gl_resizeImageNoInterpolate(unsigned char *dest,int xsize_dest,int ysize_dest,
                                  unsigned char *src,int xsize_src,int ysize_src);
+unsigned int gl_getNextPowerOfTwo(unsigned int n);
 
 GLContext *gl_get_context(void);
 

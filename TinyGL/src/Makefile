@@ -2,15 +2,9 @@ include ../config.mk
 
 OBJS= api.o list.o vertex.o init.o matrix.o texture.o \
       misc.o clear.o light.o clip.o select.o get.o error.o \
-      zbuffer.o zline.o zdither.o ztriangle.o \
+      zbuffer.o zline.o ztriangle.o \
       zmath.o image_util.o oscontext.o msghandling.o \
       arrays.o specbuf.o memory.o
-ifdef TINYGL_USE_GLX
-OBJS += glx.o
-endif
-ifdef TINYGL_USE_NANOX
-OBJS += nglx.o
-endif
 
 INCLUDES = -I../include
 LIB = libTinyGL.a

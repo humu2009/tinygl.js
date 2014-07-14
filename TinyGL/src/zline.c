@@ -5,23 +5,15 @@
 
 void ZB_plot(ZBuffer * zb, ZBufferPoint * p)
 {
-    unsigned short *pz;
+    unsigned int *pz;
     PIXEL *pp;
     int zz;
 
     pz = zb->zbuf + (p->y * zb->xsize + p->x);
     pp = (PIXEL *) ((char *) zb->pbuf + zb->linesize * p->y + p->x * PSZB);
-    zz = p->z >> ZB_POINT_Z_FRAC_BITS;
+    zz = p->z;
     if (ZCMP(zz, *pz)) {
-#if TGL_FEATURE_RENDER_BITS == 24 
-        pp[0]=p->r>>8;
-        pp[1]=p->g>>8;
-        pp[2]=p->b>>8;
-#elif TGL_FEATURE_RENDER_BITS == 32
 	*pp = 0xff000000 | RGB_TO_PIXEL(p->r, p->g, p->b);
-#else
-	*pp = RGB_TO_PIXEL(p->r, p->g, p->b);
-#endif
 	*pz = zz;
     }
 }

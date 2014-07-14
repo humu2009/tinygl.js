@@ -5,7 +5,7 @@
 {
   ZBufferPoint *t,*pr1,*pr2,*l1,*l2;
   float fdx1, fdx2, fdy1, fdy2, fz, d1, d2;
-  unsigned short *pz1;
+  unsigned int *pz1;
   PIXEL *pp1;
   int part,update_left,update_right;
 
@@ -18,6 +18,7 @@
 
 #ifdef INTERP_Z
   int z1,dzdx,dzdy,dzdl_min,dzdl_max;
+  /* also interpolate 1/w for perspective correction */
   float winv1, dwinvdx, dwinvdy, dwinvdl_min, dwinvdl_max;
 #endif
 #ifdef INTERP_RGB
@@ -252,8 +253,8 @@
           register PIXEL *pp;
           register int n;
 #ifdef INTERP_Z
-          register unsigned short *pz;
-          register unsigned int z,zz;
+          register unsigned int *pz;
+          register unsigned int z;
 		  register float winv;
 #endif
 #ifdef INTERP_RGB

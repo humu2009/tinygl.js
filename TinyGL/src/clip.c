@@ -405,8 +405,14 @@ void gl_draw_triangle_fill(GLContext *c,
 #ifdef PROFILE
     count_triangles_textured++;
 #endif
-    ZB_setTexture(c->zb, c->current_texture->images[0].pixmap, c->current_texture->images[0].s_bound, c->current_texture->images[0].t_bound);
-    ZB_fillTriangleMappingPerspective(c->zb,&p0->zp,&p1->zp,&p2->zp);
+    ZB_setTexture(c->zb, c->current_texture->images[0].pixmap, c->current_texture->images[0].s_bound, c->current_texture->images[0].t_bound, c->current_texture->images[0].xsize_log2);
+    /* TODO: compute the ratio of the triangle area in screen space to that in texture space, from which we can choose the proper texturing routine */
+    if (c->current_texture->mag_filter == GL_NEAREST && c->current_texture->min_filter == GL_NEAREST) {
+      ZB_fillTriangleMappingPerspective(c->zb,&p0->zp,&p1->zp,&p2->zp);
+    } else {
+      ZB_fillTriangleMappingPerspectiveBilinear(c->zb,&p0->zp,&p1->zp,&p2->zp);
+    }
+
   } else if (c->current_shade_model == GL_SMOOTH) {
     ZB_fillTriangleSmooth(c->zb,&p0->zp,&p1->zp,&p2->zp);
   } else {

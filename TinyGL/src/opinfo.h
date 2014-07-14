@@ -23,6 +23,7 @@ ADD_OP(Scale,3,"%f %f %f")
 
 ADD_OP(Viewport,4,"%d %d %d %d")
 ADD_OP(Frustum,6,"%f %f %f %f %f %f")
+ADD_OP(Ortho, 6, "%f %f %f %f %f %f")
 
 ADD_OP(Material,6,"%C %C %f %f %f %f")
 ADD_OP(ColorMaterial,2,"%C %C")
@@ -58,6 +59,8 @@ ADD_OP(NextBuffer,1,"%p")
 
 /* opengl 1.1 arrays */
 ADD_OP(ArrayElement, 1, "%d")
+ADD_OP(DrawArrays, 3, "%C %d %d")
+ADD_OP(DrawElements, 4, "%C %d %C %p")
 ADD_OP(EnableClientState, 1, "%C")
 ADD_OP(DisableClientState, 1, "%C")
 ADD_OP(VertexPointer, 4, "%d %C %d %p")

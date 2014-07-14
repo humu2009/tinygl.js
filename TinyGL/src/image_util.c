@@ -99,6 +99,9 @@ void gl_resizeImage(unsigned char *dest,int xsize_dest,int ysize_dest,
   }
 }
 
+#undef INTERP_NORM
+#undef INTERP_NORM_BITS
+
 #define FRAC_BITS 16
 
 /* resizing with no interlating nor nearest pixel */
@@ -134,5 +137,22 @@ void gl_resizeImageNoInterpolate(unsigned char *dest,int xsize_dest,int ysize_de
     }
     y1+=y1inc;
   }
+}
+
+#undef FRAC_BITS
+
+/*
+ * return next highest power of 2 for the given number
+ */
+unsigned int gl_getNextPowerOfTwo(unsigned int n)
+{
+  if      (n<=8)   return 8;
+  else if (n<=16)  return 16;
+  else if (n<=32)  return 32;
+  else if (n<=64)  return 64;
+  else if (n<=128) return 128;
+  else if (n<=256) return 256;
+  else if (n<=512) return 512;
+  else             return 1024;
 }
 

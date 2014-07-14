@@ -738,6 +738,8 @@ void glScalef(float x,float y,float z);
 void glViewport(int x,int y,int width,int height);
 void glFrustum(double left,double right,double bottom,double top,
                double near,double far);
+void glOrtho(double left,double right,double bottom,double top,
+             double near,double far);
 
 /* lists */
 unsigned int glGenLists(int range);
@@ -795,6 +797,9 @@ void glFrontFace(int mode);
 void glEnableClientState(GLenum array);
 void glDisableClientState(GLenum array);
 void glArrayElement(GLint i);
+void glDrawArrays(GLenum mode, GLint first, GLsizei count);
+void glDrawElements(GLenum mode, GLsizei count, GLenum type, 
+	                const GLvoid *indices);
 void glVertexPointer(GLint size, GLenum type, GLsizei stride, 
                      const GLvoid *pointer);
 void glColorPointer(GLint size, GLenum type, GLsizei stride, 
@@ -814,7 +819,6 @@ inline void glLineWidth(float) {}
 inline void glDepthFunc(int) {}
 inline void glBlendFunc(int, int) {}
 inline void glTexEnvf(int, int, int) {}
-inline void glOrtho(float,float,float,float,float,float){}
 inline void glVertex2i(int,int) {}
 inline void glDepthMask(int) {}
 inline void glFogi(int, int) {}

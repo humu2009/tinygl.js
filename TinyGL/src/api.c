@@ -367,6 +367,22 @@ void glFrustum(double left,double right,double bottom,double top,
   gl_add_op(p);
 }
 
+void glOrtho(double left,double right,double bottom,double top,
+             double near,double far)
+{
+  GLParam p[7];
+
+  p[0].op=OP_Ortho;
+  p[1].f=left;
+  p[2].f=right;
+  p[3].f=bottom;
+  p[4].f=top;
+  p[5].f=near;
+  p[6].f=far;
+
+  gl_add_op(p);
+}
+
 /* lightening */
 
 void glMaterialfv(int mode,int type,float *v)

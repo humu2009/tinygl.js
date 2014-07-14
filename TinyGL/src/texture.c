@@ -3,6 +3,7 @@
  */
 
 #include "zgl.h"
+#include <math.h>
 #include <string.h>
 
 static GLTexture *find_texture(GLContext *c,int h)
@@ -55,6 +56,9 @@ GLTexture *alloc_texture(GLContext *c,int h)
   *ht=t;
 
   t->handle=h;
+
+  t->mag_filter=GL_NEAREST;
+  t->min_filter=GL_NEAREST;
   
   return t;
 }
@@ -134,7 +138,6 @@ void glopTexImage2D(GLContext *c,GLParam *p)
   int type=p[8].i;
   void *pixels=p[9].p;
   GLImage *im;
-  int dim;
   unsigned char *pixels1;
   int do_free;
 
@@ -144,25 +147,18 @@ void glopTexImage2D(GLContext *c,GLParam *p)
     gl_fatal_error("glTexImage2D: combinaison of parameters not handled");
   }
 
-  /* select proper dimensions for this texture */
-  dim = width > height ? width : height;
-  if      (dim<=8)    dim=8;
-  else if (dim<=16)   dim=16;
-  else if (dim<=32)   dim=32;
-  else if (dim<=64)   dim=64;
-  else if (dim<=128)  dim=128;
-  else if (dim<=256)  dim=256;
-  else if (dim<=512)  dim=512;
-  else                dim=1024;
+  /* compute proper dimensions for this texture */
+  int aligned_width = gl_getNextPowerOfTwo(width);
+  int aligned_height = gl_getNextPowerOfTwo(height);
 
   do_free=0;
-  if (width != dim || height != dim) {
-    pixels1 = gl_malloc(dim * dim * 4);
+  if (width != aligned_width || height != aligned_height) {
+    pixels1 = gl_malloc(aligned_width * aligned_height * 4);
     /* no interpolation is done here to respect the original image aliasing ! */
-    gl_resizeImageNoInterpolate(pixels1,dim,dim,pixels,width,height);
+    gl_resizeImageNoInterpolate(pixels1,aligned_width,aligned_height,pixels,width,height);
     do_free=1;
-    width=dim;
-    height=dim;
+    width=aligned_width;
+    height=aligned_height;
   } else {
     pixels1=pixels;
   }
@@ -176,29 +172,14 @@ void glopTexImage2D(GLContext *c,GLParam *p)
 
   im->xsize=width;
   im->ysize=height;
+  im->xsize_log2=(unsigned int)(0.001+M_LOG2E*logf(width));	/* must take care of floating point error */
   im->s_bound = (unsigned int)(width-1);
-  im->t_bound = (unsigned int)((height-1)*width);
+  im->t_bound = (unsigned int)(height-1);
 
-#if TGL_FEATURE_RENDER_BITS == 24 
-  if (im->pixmap==NULL) im->pixmap=gl_malloc(width*height*3);
-  /* This does not work now! */
-  if(im->pixmap) {
-      memcpy(im->pixmap,pixels1,width*height*3);
-  }
-#elif TGL_FEATURE_RENDER_BITS == 32
   if (im->pixmap==NULL) im->pixmap=gl_malloc(width*height*4);
   if(im->pixmap) {
       gl_convertRGBA_to_8A8R8G8B(im->pixmap,pixels1,width,height);
   }
-#elif TGL_FEATURE_RENDER_BITS == 16
-  if (im->pixmap==NULL) im->pixmap=gl_malloc(width*height*2);
-  /* This does not work now! */
-  if(im->pixmap) {
-      gl_convertRGB_to_5R6G5B(im->pixmap,pixels1,width,height);
-  }
-#else
-#error TODO
-#endif
   if (do_free) gl_free(pixels1);
 }
 
@@ -232,10 +213,21 @@ void glopTexParameter(GLContext *c,GLParam *p)
     gl_fatal_error("glTexParameter: unsupported option");
   }
 
+  if (!c->current_texture)
+    return;
+
   switch(pname) {
   case GL_TEXTURE_WRAP_S:
   case GL_TEXTURE_WRAP_T:
     if (param != GL_REPEAT) goto error;
+    break;
+  case GL_TEXTURE_MAG_FILTER:
+    c->current_texture->mag_filter=param;
+    break;
+  case GL_TEXTURE_MIN_FILTER:
+    c->current_texture->min_filter=param;
+    break;
+  default:
     break;
   }
 }
