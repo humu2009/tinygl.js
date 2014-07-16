@@ -22,7 +22,7 @@ void glGetIntegerv(int pname,int *params)
     *params = MAX_LIGHTS;
     break;
   case GL_MAX_TEXTURE_SIZE:
-    *params = 256; /* not completely true, but... */
+    *params = 1024; /* not completely true, but... */
     break;
   case GL_MAX_TEXTURE_STACK_DEPTH:
     *params = MAX_TEXTURE_STACK_DEPTH;
