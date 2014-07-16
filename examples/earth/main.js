@@ -31,6 +31,9 @@ function latLon2Point(lat, lon, position) {
 	return position;
 }
 
+/**
+ * Calculate view frustum from the given parameters.
+ */
 function makeFrustum(fovy, aspect, near, far) {
    var ymax = near * Math.tan( fovy * Math.PI / 360 );
    var ymin = -ymax;
@@ -47,21 +50,75 @@ function makeFrustum(fovy, aspect, near, far) {
    };
 }
 
+/**
+ * Transform a vector with the given matrix(4x4).
+ */
+function transformVector4(matrix, src, dest) {
+	if (!dest)
+		dest = new Float32Array(4);
+
+	dest[0] = matrix[0] * src[0] + matrix[4] * src[1] + matrix[8] *  src[2] + matrix[12] * src[3];
+	dest[1] = matrix[1] * src[0] + matrix[5] * src[1] + matrix[9] *  src[2] + matrix[13] * src[3];
+	dest[2] = matrix[2] * src[0] + matrix[6] * src[1] + matrix[10] * src[2] + matrix[14] * src[3];
+	dest[3] = matrix[3] * src[0] + matrix[7] * src[1] + matrix[11] * src[2] + matrix[15] * src[3];
+
+	return dest;
+}
+
+var _v0 = new Float32Array(4);
+var _v1 = new Float32Array(4);
+
+/**
+ * Project a point from its model space to window space.
+ */
+function projectPoint(modelViewMatrix, projMatrix, viewport, src, dest) {
+	if (!dest)
+		dest = new Float32Array(3);
+
+	_v0[0] = src[0]; _v0[1] = src[1]; _v0[2] = src[2]; _v0[3] = 1;
+
+	// transform point from model space to clip space
+	transformVector4(modelViewMatrix, _v0, _v1);
+	transformVector4(projMatrix, _v1, _v0);
+
+	/* to normalized device coordinates */
+	_v0[0] /= _v0[3];
+	_v0[1] /= _v0[3];
+	_v0[2] /= _v0[3];
+
+	/* to window coordinates */
+	dest[0] =  viewport[0] + 0.5 * (1 + _v0[0]) * viewport[2];
+	dest[1] = -viewport[1] + 0.5 * (1 - _v0[1]) * viewport[3];
+	dest[2] =  0.5 * (1 + _v0[2]);
+
+	return dest;
+}
+
 function earth_main(args) {
 	var canvas = (typeof args.canvas) == 'string' ? document.getElementById(args.canvas) : args.canvas;
 	var contextMenu = (typeof args.contextMenu) == 'string' ? document.getElementById(args.contextMenu) : args.contextMenu;
 
 	var is_firefox = /Firefox[\/\s]\d+(?:.\d+)*/.test(window.navigator.userAgent);
 
-	var gl = canvas.getContext('experimental-tinygl');
+	// Get tinygl rendering context with the creation attrib 'surfaceDriver' = '2d' so that we can 
+	// still require a 2D rendering context on the same canvas later.
+	var gl = canvas.getContext('experimental-tinygl', { surfaceDriver: '2d' });
+
+	// Also get a 2D rendering context since we are to make post drawing upon the top of 3D output.
+	var ctx2d = canvas.getContext('2d');
 
 	var globe = new Globe(GLOBE_RADIUS, 'earth/data/earth.jpg');
 
 	var layers = new LineLayers();
 
+	var labels = new Labels();
+
 	var color_globe = [0.50, 0.50, 0.50];
 	var color_boundary = [0.99, 0.96, 0.32];
 	var color_water_system = [0.06, 0.91, 0.96];
+	var color_country_name = [1.00, 1.00, 1.00];
+
+	var font_country_name = '10px Georgia';
 
 	var showGlobe = true;
 	var enableTexture = true;
@@ -73,10 +130,18 @@ function earth_main(args) {
 	var autoRotX = 3, autoRotY = 0;
 	var scaleAll = 0.9;
 
+	var viewport = new Int32Array(4);
+	var modelViewMatrix = new Float32Array(16);
+	var projectionMatrix = new Float32Array(16);
+
 	var mouseX, mouseY;
 	var mouseDown = false;
 
 	var layerStates = {};
+
+	function projectPointOntoCanvas(src, dest) {
+		projectPoint(modelViewMatrix, projectionMatrix, viewport, src, dest);
+	}
 
 	function init() {
 		// init the globe
@@ -96,6 +161,12 @@ function earth_main(args) {
 		layerStates['rivers'] = false;
 		layerStates['nations'] = false;
 		layerStates['states'] = false;
+
+		// init labels, adding countries and regions
+		for (var i=0; i<countries_and_regions.length; i++) {
+			var cr = countries_and_regions[i];
+			labels.addLabel(cr[2], cr[1], cr[0], color_country_name, font_country_name);
+		}
 	}
 
 	function resize() {
@@ -120,6 +191,16 @@ function earth_main(args) {
 	}
 
 	function draw() {
+		draw_3d();
+
+		gl.getIntegerv(gl.VIEWPORT, viewport);
+		gl.getFloatv(gl.MODELVIEW_MATRIX, modelViewMatrix);
+		gl.getFloatv(gl.PROJECTION_MATRIX, projectionMatrix);
+
+		draw_2d();
+	}
+
+	function draw_3d() {
 		gl.clearColor(0.2, 0.2, 0.2, 1);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -144,12 +225,14 @@ function earth_main(args) {
 		gl.rotatef(rotY, 1, 0, 0);
 		gl.rotatef(rotX, 0, 1, 0);
 
+		// draw globe
 		if (showGlobe)
 			globe.draw(gl, color_globe, enableTexture);
 
 		gl.pushMatrix();
 		gl.scalef(1.001, 1.001, 1.001);
 
+		// draw layers
 		layers.draw(gl);
 
 		gl.popMatrix();
@@ -157,6 +240,14 @@ function earth_main(args) {
 		gl.flush();
 
 		gl.swapBuffers();
+	}
+
+	function draw_2d() {
+		if (ctx2d) {
+			// draw labels
+			if (scaleAll > 1.1)
+				labels.draw(ctx2d, projectPointOntoCanvas, true, 15);
+		}
 	}
 
 	function mouse_down(evt) {
@@ -293,6 +384,8 @@ function earth_main(args) {
 	//
 
 	init();
+
 	resize();
+
 	main_loop();
 }
