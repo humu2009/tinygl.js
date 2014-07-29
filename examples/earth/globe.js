@@ -33,7 +33,7 @@ function Globe(radius, textureUrl) {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-		gl.bindTexture(gl.TEXTURE_2D, null);
+		gl.bindTexture(gl.TEXTURE_2D, 0);
 		gl.pixelStorei(gl.UNPACK_FLIP_Y_TINYGL, false);
 		_texureReadyState = DONE;
 	}
@@ -103,7 +103,7 @@ function Globe(radius, textureUrl) {
 				gl.bindTexture(gl.TEXTURE_2D, _textureId);
 				break;
 			default:
-				gl.bindTexture(gl.TEXTURE_2D, null);
+				gl.bindTexture(gl.TEXTURE_2D, 0);
 				break;
 			}
 		}

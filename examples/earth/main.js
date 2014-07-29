@@ -230,6 +230,9 @@ function earth_main(args) {
 			globe.draw(gl, color_globe, enableTexture);
 
 		gl.pushMatrix();
+
+		// Make the upcoming layer geometries slightly off the  
+		// surface of the globe. This helps to avoid z-fighting.
 		gl.scalef(1.001, 1.001, 1.001);
 
 		// draw layers
@@ -380,7 +383,7 @@ function earth_main(args) {
 		}
 	};
 
-	// launce the application
+	// run the application
 	//
 
 	init();
