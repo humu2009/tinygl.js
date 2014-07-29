@@ -15,7 +15,7 @@ function Labels() {
 		}
 	}
 
-	// Sort labels by depth.
+	// Add labels to display list and sort them by depth.
 	function _sortLabels() {
 		_displayList.length = 0;
 
@@ -66,7 +66,8 @@ function Labels() {
 
 		var numOfLabelsToDisplay = (maxLabelsInView != undefined) ? 
 									Math.min(maxLabelsInView, _displayList.length) : _displayList.length;
-		for (var li=0; li<numOfLabelsToDisplay; li++) {
+		// draw labels from the farthest closer
+		for (var li=numOfLabelsToDisplay-1; li>=0; li--) {
 			var labelWrapper = _displayList[li];
 
 			ctx2d.font = labelWrapper.label.font;
