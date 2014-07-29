@@ -90,6 +90,12 @@
 	var _glNormalPointer = Module.cwrap('glNormalPointer', null, ['number', 'number', 'number']);
 	var _glTexCoordPointer = Module.cwrap('glTexCoordPointer', null, ['number', 'number', 'number', 'number']);
 	var _glPolygonOffset = Module.cwrap('glPolygonOffset', null, ['number', 'number']);
+	var _glGenQueries = Module.cwrap('glGenQueries', null, ['number', 'number']);
+	var _glDeleteQueries = Module.cwrap('glDeleteQueries', null, ['number', 'number']);
+	var _glIsQuery = Module.cwrap('glIsQuery', 'number', ['number']);
+	var _glBeginQuery = Module.cwrap('glBeginQuery', null, ['number', 'number']);
+	var _glEndQuery = Module.cwrap('glEndQuery', null, ['number']);
+	var _glGetQueryObjectuiv = Module.cwrap('glGetQueryObjectuiv', null, ['number', 'number', 'number']);
 	var _glDebug = Module.cwrap('glDebug', null, ['number']);
 
 	/**
@@ -1212,6 +1218,15 @@
 		TEXTURE_COORD_ARRAY_POINTER_EXT: 0x8092,
 		EDGE_FLAG_ARRAY_POINTER_EXT:  0x8093, 
 
+		// Occlusion queries
+		//
+
+		QUERY_COUNTER_BITS:  0x8864, 
+		CURRENT_QUERY:  0x8865, 
+		QUERY_RESULT:  0x8866, 
+		QUERY_RESULT_AVAILABLE:  0x8867, 
+		SAMPLES_PASSED:  0x8914, 
+
 		CURRENT_BIT:  0x00000001,
 		POINT_BIT:  0x00000002,
 		LINE_BIT:  0x00000004,
@@ -2130,6 +2145,56 @@
 		polygonOffset: function(factor, units) {
 			_ostgl_make_current(this._tgl_ctx, 0);
 			_glPolygonOffset(factor, units);
+		}, 
+
+		// Occlusion queries
+		//
+
+		genQueries: function(num, ids) {
+			ids = ids || new Uint32Array(num);
+			var buf_ptr = Module._malloc(num * BYTES_PER_UINT32);
+			_ostgl_make_current(this._tgl_ctx, 0);
+			_glGenQueries(num, buf_ptr);
+			for (var i=0, ptr=buf_ptr; i<num; i++, ptr+=BYTES_PER_UINT32) {
+				ids[i] = Module.getValue(ptr, 'i32');
+			}
+			Module._free(buf_ptr);
+			return ids;
+		}, 
+
+		deleteQueries: function(num, ids) {
+			var buf_ptr = Module._malloc(num * BYTES_PER_UINT32);
+			Module.HEAPU32.set(ids, buf_ptr / BYTES_PER_UINT32);
+			_ostgl_make_current(this._tgl_ctx, 0);
+			_glDeleteQueries(num, buf_ptr);
+			Module._free(buf_ptr);
+		}, 
+
+		isQuery: function(query) {
+			_ostgl_make_current(this._tgl_ctx, 0);
+			return _glIsQuery(query);
+		}, 
+
+		beginQuery: function(target, query) {
+			_ostgl_make_current(this._tgl_ctx, 0);
+			_glBeginQuery(target, query);
+		}, 
+
+		endQuery: function(target) {
+			_ostgl_make_current(this._tgl_ctx, 0);
+			_glEndQuery(target);
+		}, 
+
+		getQueryObjectuiv: function(query, pname, v) {
+			var buf_ptr = Module._malloc(BYTES_PER_INT32);
+			Module._memset(buf_ptr, 0, BYTES_PER_INT32);
+			_ostgl_make_current(this._tgl_ctx, 0);
+			_glGetQueryObjectuiv(query, pname, buf_ptr);
+			var val = Module.getValue(buf_ptr, 'i32');
+			Module._free(buf_ptr);
+			if (v)
+				v[0] = val;
+			return val;
 		}, 
 
 		// Non-compatible functions
