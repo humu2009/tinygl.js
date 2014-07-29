@@ -593,9 +593,9 @@ enum {
 	GL_BLEND_COLOR_EXT		= 0x8005,
 
 	/* GL_EXT_polygon_offset */
-        GL_POLYGON_OFFSET_EXT           = 0x8037,
-        GL_POLYGON_OFFSET_FACTOR_EXT    = 0x8038,
-        GL_POLYGON_OFFSET_BIAS_EXT      = 0x8039,
+  GL_POLYGON_OFFSET_EXT           = 0x8037,
+  GL_POLYGON_OFFSET_FACTOR_EXT    = 0x8038,
+  GL_POLYGON_OFFSET_BIAS_EXT      = 0x8039,
 
 	/* GL_EXT_vertex_array */
 	GL_VERTEX_ARRAY_EXT		= 0x8074,
@@ -629,7 +629,14 @@ enum {
 	GL_COLOR_ARRAY_POINTER_EXT	= 0x8090,
 	GL_INDEX_ARRAY_POINTER_EXT	= 0x8091,
 	GL_TEXTURE_COORD_ARRAY_POINTER_EXT= 0x8092,
-	GL_EDGE_FLAG_ARRAY_POINTER_EXT	= 0x8093
+	GL_EDGE_FLAG_ARRAY_POINTER_EXT	= 0x8093,
+  
+  /* Occlusion Queries */
+  GL_QUERY_COUNTER_BITS     = 0x8864,
+  GL_CURRENT_QUERY          = 0x8865,
+  GL_QUERY_RESULT           = 0x8866,
+  GL_QUERY_RESULT_AVAILABLE = 0x8867,
+  GL_SAMPLES_PASSED         = 0x8914
 
 };
 
@@ -811,6 +818,14 @@ void glTexCoordPointer(GLint size, GLenum type, GLsizei stride,
 
 /* opengl 1.2 polygon offset */
 void glPolygonOffset(GLfloat factor, GLfloat units);
+
+/* occlusion queries */
+void glGenQueries(int n, unsigned int *queries);
+void glDeleteQueries(int n, unsigned int *queries);
+int  glIsQuery(unsigned int query);
+void glBeginQuery(int target, unsigned int query);
+void glEndQuery(int target);
+void glGetQueryObjectuiv(unsigned int query, int pname, unsigned int *params);
 
 /* not implemented, just added to compile  */
   /*

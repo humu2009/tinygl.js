@@ -13,23 +13,51 @@ void ZB_plot(ZBuffer * zb, ZBufferPoint * p)
     pp = (PIXEL *) ((char *) zb->pbuf + zb->linesize * p->y + p->x * PSZB);
     zz = p->z;
     if (ZCMP(zz, *pz)) {
-	*pp = 0xff000000 | RGB_TO_PIXEL(p->r, p->g, p->b);
-	*pz = zz;
+	      *pp = 0xff000000 | RGB_TO_PIXEL(p->r, p->g, p->b);
+	      *pz = zz;
     }
 }
 
-#define INTERP_Z
+void ZB_plot_query(ZBuffer * zb, ZBufferPoint * p)
+{
+    unsigned int *pz;
+    int zz;
+
+    pz = zb->zbuf + (p->y * zb->xsize + p->x);
+    zz = p->z;
+    if (ZCMP(zz, *pz)) {
+	      zb->samples_passed++;
+    }
+}
+
 static void ZB_line_flat_z(ZBuffer * zb, ZBufferPoint * p1, ZBufferPoint * p2, 
                            int color)
 {
+#define INTERP_Z
+
 #include "zline.h"
 }
 
 /* line with color interpolation */
-#define INTERP_Z
-#define INTERP_RGB
 static void ZB_line_interp_z(ZBuffer * zb, ZBufferPoint * p1, ZBufferPoint * p2)
 {
+#define INTERP_Z
+#define INTERP_RGB
+
+#include "zline.h"
+}
+
+void ZB_line_query_z(ZBuffer * zb, ZBufferPoint * p1, ZBufferPoint * p2)
+{
+#define INTERP_Z
+
+#define PUTPIXEL() \
+{   \
+  if (ZCMP(z,*pz)) { \
+    zb->samples_passed++; \
+  } \
+}
+
 #include "zline.h"
 }
 
@@ -41,9 +69,20 @@ static void ZB_line_flat(ZBuffer * zb, ZBufferPoint * p1, ZBufferPoint * p2,
 #include "zline.h"
 }
 
-#define INTERP_RGB
 static void ZB_line_interp(ZBuffer * zb, ZBufferPoint * p1, ZBufferPoint * p2)
 {
+#define INTERP_RGB
+
+#include "zline.h"
+}
+
+void ZB_line_query(ZBuffer * zb, ZBufferPoint * p1, ZBufferPoint * p2)
+{
+#define PUTPIXEL() \
+{   \
+  zb->samples_passed++; \
+}
+
 #include "zline.h"
 }
 

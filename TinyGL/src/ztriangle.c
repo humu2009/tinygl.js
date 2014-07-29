@@ -162,7 +162,27 @@ void ZB_fillTriangleMappingPerspectiveBilinear(ZBuffer *zb,
     z+=dzdx;					\
     sz+=dszdx;					\
     tz+=dtzdx;					\
-	winv+=dwinvdx;           \
+	  winv+=dwinvdx;      \
+}
+
+#include "ztriangle.h"
+}
+
+void ZB_fillTriangleQuery(ZBuffer *zb,
+			 ZBufferPoint *p0,ZBufferPoint *p1,ZBufferPoint *p2)
+{
+#define INTERP_Z
+
+#define DRAW_INIT() \
+{						\
+}
+
+#define PUT_PIXEL(_a)				\
+{						\
+    if (ZCMP(z,pz[_a])) {		 \
+      zb->samples_passed++;  \
+    }						\
+    z+=dzdx;					\
 }
 
 #include "ztriangle.h"

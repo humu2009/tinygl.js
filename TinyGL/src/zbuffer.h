@@ -44,10 +44,13 @@ typedef struct {
     int nb_colors;
     unsigned char *dctable;
     int *ctable;
+
     PIXEL *current_texture;
-	unsigned int s_log2;
-	unsigned int s_bound;
-	unsigned int t_bound;
+    unsigned int s_log2;
+    unsigned int s_bound;
+    unsigned int t_bound;
+
+    int samples_passed; /* samples that passed occlusion query */
 } ZBuffer;
 
 typedef struct {
@@ -80,8 +83,11 @@ void ZB_copyFrameBuffer(ZBuffer *zb,void *buf,int linesize);
 /* zline.c */
 
 void ZB_plot(ZBuffer *zb,ZBufferPoint *p);
+void ZB_plot_query(ZBuffer * zb, ZBufferPoint * p);
 void ZB_line(ZBuffer *zb,ZBufferPoint *p1,ZBufferPoint *p2);
 void ZB_line_z(ZBuffer * zb, ZBufferPoint * p1, ZBufferPoint * p2);
+void ZB_line_query(ZBuffer * zb, ZBufferPoint * p1, ZBufferPoint * p2);
+void ZB_line_query_z(ZBuffer * zb, ZBufferPoint * p1, ZBufferPoint * p2);
 
 /* ztriangle.c */
 
@@ -98,6 +104,9 @@ void ZB_fillTriangleMappingPerspective(ZBuffer *zb,
 
 void ZB_fillTriangleMappingPerspectiveBilinear(ZBuffer *zb,
                     ZBufferPoint *p0,ZBufferPoint *p1,ZBufferPoint *p2);
+
+void ZB_fillTriangleQuery(ZBuffer *zb,
+			 ZBufferPoint *p0,ZBufferPoint *p1,ZBufferPoint *p2);
 
 
 typedef void (*ZB_fillTriangleFunc)(ZBuffer  *,

@@ -9,6 +9,7 @@ void initSharedState(GLContext *c)
   s->lists=gl_zalloc(sizeof(GLList *) * MAX_DISPLAY_LISTS);
   s->texture_hash_table=
       gl_zalloc(sizeof(GLTexture *) * TEXTURE_HASH_TABLE_SIZE);
+  s->queries=gl_zalloc(sizeof(GLQuery *) * MAX_OCCLUSION_QUERIES);
 
   alloc_texture(c,0);
 }
@@ -24,6 +25,8 @@ void endSharedState(GLContext *c)
   gl_free(s->lists);
 
   gl_free(s->texture_hash_table);
+
+  gl_free(s->queries);
 }
 
 
@@ -168,6 +171,9 @@ void glInit(void *zbuffer1)
   
   /* opengl 1.1 polygon offset */
   c->offset_states = 0;
+
+  /* occlusion queries */
+  c->current_query = NULL;
   
   /* clear the resize callback function pointer */
   c->gl_resize_viewport = NULL;

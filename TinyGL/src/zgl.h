@@ -145,12 +145,21 @@ typedef struct GLTexture {
   struct GLTexture *next,*prev;
 } GLTexture;
 
+/* occlusion queries */
+
+#define MAX_OCCLUSION_QUERIES 512
+
+typedef struct GLQuery {
+  int samples_passed;
+} GLQuery;
+
 
 /* shared state */
 
 typedef struct GLSharedState {
   GLList **lists;
   GLTexture **texture_hash_table;
+  GLQuery **queries;
 } GLSharedState;
 
 struct GLContext;
@@ -265,6 +274,9 @@ typedef struct GLContext {
   float offset_factor;
   float offset_units;
   int offset_states;
+
+  /* occlusion queries */
+  GLQuery *current_query;
   
   /* specular buffer. could probably be shared between contexts, 
     but that wouldn't be 100% thread safe */

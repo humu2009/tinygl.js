@@ -61,6 +61,11 @@ static void gl_add_select1(GLContext *c,int z1,int z2,int z3)
   gl_add_select(c,0xffffffff-min,0xffffffff-max);
 }
 
+static int gl_is_in_query(GLContext *c)
+{
+  return c->current_query != NULL;
+}
+
 /* point */
 
 void gl_draw_point(GLContext *c,GLVertex *p0)
@@ -68,6 +73,8 @@ void gl_draw_point(GLContext *c,GLVertex *p0)
   if (p0->clip_code == 0) {
     if (c->render_mode == GL_SELECT) {
       gl_add_select(c,p0->zp.z,p0->zp.z);
+    } else if (gl_is_in_query(c)) {
+      ZB_plot_query(c->zb,&p0->zp);
     } else {
       ZB_plot(c->zb,&p0->zp);
     }
@@ -124,10 +131,17 @@ void gl_draw_line(GLContext *c,GLVertex *p1,GLVertex *p2)
     if (c->render_mode == GL_SELECT) {
       gl_add_select1(c,p1->zp.z,p2->zp.z,p2->zp.z);
     } else {
-        if (c->depth_test)
-            ZB_line_z(c->zb,&p1->zp,&p2->zp);
-        else
-            ZB_line(c->zb,&p1->zp,&p2->zp);
+        if (c->depth_test) {
+            if (gl_is_in_query(c))
+              ZB_line_query_z(c->zb,&p1->zp,&p2->zp);
+            else
+              ZB_line_z(c->zb,&p1->zp,&p2->zp);
+        } else {
+            if (gl_is_in_query(c))
+              ZB_line_query(c->zb,&p1->zp,&p2->zp);
+            else
+              ZB_line(c->zb,&p1->zp,&p2->zp);
+        }
     }
   } else if ( (cc1&cc2) != 0 ) {
     return;
@@ -156,9 +170,16 @@ void gl_draw_line(GLContext *c,GLVertex *p1,GLVertex *p2)
       gl_transform_to_viewport(c,&q2);
 
       if (c->depth_test)
-          ZB_line_z(c->zb,&q1.zp,&q2.zp);
-      else
-          ZB_line(c->zb,&q1.zp,&q2.zp);
+          if (gl_is_in_query(c))
+            ZB_line_query_z(c->zb,&q1.zp,&q2.zp);
+          else
+            ZB_line_z(c->zb,&q1.zp,&q2.zp);
+      else {
+          if (gl_is_in_query(c))
+            ZB_line_query(c->zb,&q1.zp,&q2.zp);
+          else
+            ZB_line(c->zb,&q1.zp,&q2.zp);
+      }
     }
   }
 }
@@ -401,22 +422,26 @@ void gl_draw_triangle_fill(GLContext *c,
   }
 #endif
     
-  if (c->texture_2d_enabled) {
-#ifdef PROFILE
-    count_triangles_textured++;
-#endif
-    ZB_setTexture(c->zb, c->current_texture->images[0].pixmap, c->current_texture->images[0].s_bound, c->current_texture->images[0].t_bound, c->current_texture->images[0].xsize_log2);
-    /* TODO: compute the ratio of the triangle area in screen space to that in texture space, from which we can choose the proper texturing routine */
-    if (c->current_texture->mag_filter == GL_NEAREST && c->current_texture->min_filter == GL_NEAREST) {
-      ZB_fillTriangleMappingPerspective(c->zb,&p0->zp,&p1->zp,&p2->zp);
-    } else {
-      ZB_fillTriangleMappingPerspectiveBilinear(c->zb,&p0->zp,&p1->zp,&p2->zp);
-    }
-
-  } else if (c->current_shade_model == GL_SMOOTH) {
-    ZB_fillTriangleSmooth(c->zb,&p0->zp,&p1->zp,&p2->zp);
+  if (gl_is_in_query(c)) {
+    ZB_fillTriangleQuery(c->zb,&p0->zp,&p1->zp,&p2->zp);
   } else {
-    ZB_fillTriangleFlat(c->zb,&p0->zp,&p1->zp,&p2->zp);
+    if (c->texture_2d_enabled) {
+#ifdef PROFILE
+      count_triangles_textured++;
+#endif
+      ZB_setTexture(c->zb, c->current_texture->images[0].pixmap, c->current_texture->images[0].s_bound, c->current_texture->images[0].t_bound, c->current_texture->images[0].xsize_log2);
+      /* TODO: compute the ratio of the triangle area in screen space to that in texture space, from which we can choose the proper texturing routine */
+      if (c->current_texture->mag_filter == GL_NEAREST && c->current_texture->min_filter == GL_NEAREST) {
+        ZB_fillTriangleMappingPerspective(c->zb,&p0->zp,&p1->zp,&p2->zp);
+      } else {
+        ZB_fillTriangleMappingPerspectiveBilinear(c->zb,&p0->zp,&p1->zp,&p2->zp);
+      }
+
+    } else if (c->current_shade_model == GL_SMOOTH) {
+      ZB_fillTriangleSmooth(c->zb,&p0->zp,&p1->zp,&p2->zp);
+    } else {
+      ZB_fillTriangleFlat(c->zb,&p0->zp,&p1->zp,&p2->zp);
+    }
   }
 }
 
@@ -426,13 +451,25 @@ void gl_draw_triangle_line(GLContext *c,
                            GLVertex *p0,GLVertex *p1,GLVertex *p2)
 {
     if (c->depth_test) {
-        if (p0->edge_flag) ZB_line_z(c->zb,&p0->zp,&p1->zp);
-        if (p1->edge_flag) ZB_line_z(c->zb,&p1->zp,&p2->zp);
-        if (p2->edge_flag) ZB_line_z(c->zb,&p2->zp,&p0->zp);
+        if (gl_is_in_query(c)) {
+          if (p0->edge_flag) ZB_line_query_z(c->zb,&p0->zp,&p1->zp);
+          if (p1->edge_flag) ZB_line_query_z(c->zb,&p1->zp,&p2->zp);
+          if (p2->edge_flag) ZB_line_query_z(c->zb,&p2->zp,&p0->zp);
+        } else {
+          if (p0->edge_flag) ZB_line_z(c->zb,&p0->zp,&p1->zp);
+          if (p1->edge_flag) ZB_line_z(c->zb,&p1->zp,&p2->zp);
+          if (p2->edge_flag) ZB_line_z(c->zb,&p2->zp,&p0->zp);
+        }
     } else {
-        if (p0->edge_flag) ZB_line(c->zb,&p0->zp,&p1->zp);
-        if (p1->edge_flag) ZB_line(c->zb,&p1->zp,&p2->zp);
-        if (p2->edge_flag) ZB_line(c->zb,&p2->zp,&p0->zp);
+        if (gl_is_in_query(c)) {
+          if (p0->edge_flag) ZB_line_query(c->zb,&p0->zp,&p1->zp);
+          if (p1->edge_flag) ZB_line_query(c->zb,&p1->zp,&p2->zp);
+          if (p2->edge_flag) ZB_line_query(c->zb,&p2->zp,&p0->zp);
+        } else {
+          if (p0->edge_flag) ZB_line(c->zb,&p0->zp,&p1->zp);
+          if (p1->edge_flag) ZB_line(c->zb,&p1->zp,&p2->zp);
+          if (p2->edge_flag) ZB_line(c->zb,&p2->zp,&p0->zp);
+        }
     }
 }
 
@@ -442,11 +479,14 @@ void gl_draw_triangle_line(GLContext *c,
 void gl_draw_triangle_point(GLContext *c,
                             GLVertex *p0,GLVertex *p1,GLVertex *p2)
 {
-  if (p0->edge_flag) ZB_plot(c->zb,&p0->zp);
-  if (p1->edge_flag) ZB_plot(c->zb,&p1->zp);
-  if (p2->edge_flag) ZB_plot(c->zb,&p2->zp);
+  if (gl_is_in_query(c)) {
+    if (p0->edge_flag) ZB_plot_query(c->zb,&p0->zp);
+    if (p1->edge_flag) ZB_plot_query(c->zb,&p1->zp);
+    if (p2->edge_flag) ZB_plot_query(c->zb,&p2->zp);
+  } else {
+    if (p0->edge_flag) ZB_plot(c->zb,&p0->zp);
+    if (p1->edge_flag) ZB_plot(c->zb,&p1->zp);
+    if (p2->edge_flag) ZB_plot(c->zb,&p2->zp);
+  }
 }
-
-
-
 

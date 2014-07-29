@@ -46,6 +46,12 @@
 
 #ifdef INTERP_Z
 #define ZZ(x) x
+#else /* INTERP_Z */
+#define ZZ(x)
+#endif /* INTERP_Z */
+
+#ifndef PUTPIXEL
+#ifdef INTERP_Z
 #define PUTPIXEL() 				\
   {						\
     if (ZCMP(z,*pz))  { 			\
@@ -54,9 +60,9 @@
     }						\
   }
 #else /* INTERP_Z */
-#define ZZ(x)
 #define PUTPIXEL() RGBPIXEL
 #endif /* INTERP_Z */
+#endif /* PUTPIXEL */
 
 #define DRAWLINE(dx,dy,inc_1,inc_2) \
     n=dx;\
