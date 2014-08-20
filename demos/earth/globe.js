@@ -1,3 +1,7 @@
+/**
+ * Author: Ohad Eder-Pressman <ohad@visual-i.com>
+ * ported by Humu <humu2009@gmail.com>
+ */
 
 /**
  * Globe class.
