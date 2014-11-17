@@ -53,10 +53,10 @@ Here comes our first polygon with TinyGL.js:-)  See what it outputs [here](http:
 Examples
 --------
 
-[![textures example](http://humu2009.github.io/tinygl.js/screenshots/textures.jpg)](http://humu2009.github.io/tinygl.js/examples/textures.html)
 [![gears example](http://humu2009.github.io/tinygl.js/screenshots/gears.jpg)](http://humu2009.github.io/tinygl.js/examples/gears.html)
 [![atlantis example](http://humu2009.github.io/tinygl.js/screenshots/atlantis.jpg)](http://humu2009.github.io/tinygl.js/examples/atlantis.html)
 [![mech example](http://humu2009.github.io/tinygl.js/screenshots/mech.jpg)](http://humu2009.github.io/tinygl.js/examples/mech.html)
+[![earth example](http://humu2009.github.io/tinygl.js/screenshots/earth.jpg)](http://humu2009.github.io/tinygl.js/examples/earth.html)
 
 [more ...](https://github.com/humu2009/tinygl.js/wiki/Examples)
 
