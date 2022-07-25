@@ -48,7 +48,7 @@ gl.flush();
 gl.swapBuffers();
 ```
 
-Here comes our first polygon with TinyGL.js:-)  See what it outputs [here](http://humu2009.github.io/tinygl.js/examples/my_first_polygon.html).
+Here comes our first polygon with TinyGL.js :-)  See what it outputs [here](http://humu2009.github.io/tinygl.js/examples/my_first_polygon.html).
 
 Examples
 --------
