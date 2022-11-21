@@ -2513,3 +2513,24 @@ if ((typeof HTMLCanvasElement) != 'undefined') {
 	} catch (e) {
 	}
 }
+
+/* Also add for offscreenCanvas */
+if ((typeof OffscreenCanvas) != 'undefined') {
+	try {
+		var default_get_context_func = OffscreenCanvas.prototype.getContext;
+		OffscreenCanvas.prototype.getContext = function() {
+			if (arguments[0] == 'experimental-tinygl') {
+				try {
+					// initialize TinyGL runtime if not yet
+					if (!TinyGLRenderingContext)
+						initializeTinyGLRuntime(arguments[1]);
+					return new TinyGLRenderingContext(this, arguments[1]);
+				} catch (e) {
+					return null;
+				}
+			}
+			return default_get_context_func.apply(this, arguments);
+		};
+	} catch (e) {
+	}
+};
