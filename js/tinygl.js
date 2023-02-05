@@ -48,7 +48,10 @@
  * 3. This notice may not be removed or altered from any source distribution.
  */
 
-var TinyGLRenderingContext;
+/**
+ * @preserve
+ * var TinyGLRenderingContext;
+ */
 
 function initializeTinyGLRuntime(options) {
 
