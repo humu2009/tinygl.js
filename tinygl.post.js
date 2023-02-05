@@ -155,8 +155,14 @@
 		var isClean = false;
 		if (!util_canvas) {
 			isClean = true;
-			if ((typeof document) != 'undefined')
-				util_canvas = document.createElement('canvas');
+			util_canvas = {
+                		width: w,
+                		height: h,
+                		canvas2dRc: new Canvas2DRC(w, h),
+                		getContext(_) {
+                    			return this.canvas2dRc;
+                		},
+            		};
 		}
 
 		if (!util_canvas)
@@ -178,7 +184,7 @@
 
 		if (!isClean) {
 			var ctx2d = util_canvas.getContext('2d');
-			ctx2d.clearRect(0, 0, width, height);
+			ctx2d.data.fill(0);
 		}
 
 		return util_canvas;
@@ -222,9 +228,36 @@
 
 	// IE11 provides a partial implementation of WebGL. For this very browser, some special treatments are required.
 	var is_ie11_compatible = (typeof navigator) != 'undefined' && /Trident\/\d+\.\d+;\s.*rv:(\d+(?:\.\d+)*)/.test(navigator.userAgent);
+
 	/**
 	 * Utility classes
 	 */
+	
+	/**
+    	  * Emulated canvas
+    	  */
+	class Canvas2DRC {
+		constructor(w, h) {
+			this.width = w;
+			this.height = h;
+			this.data = new Uint8Array(w * h * 4);
+			return this;  
+		};
+
+        	createImageData(w, h) {
+			return {
+				width: w,
+		    		height: h,
+				data: new Uint8ClampedArray(w * h * 4)
+			};
+		};
+
+        	putImageData(data) {
+			this.width = data.width;
+			this.height = data.height;
+			this.data = data.data.slice(0);
+		};
+	};
 
 	function Canvas2DSurfaceDriver(canvas, framebuf_width, framebuf_height) {
 		this._canvas = canvas;
@@ -234,7 +267,7 @@
 		}
 
 		this._img_data = this._ctx2d.createImageData(canvas.width, canvas.height);
-	}
+	};
 
 	Canvas2DSurfaceDriver.prototype = {
 
@@ -267,11 +300,18 @@
 
 	};
 
-
 	/**
 	 * @class 
 	 */
-	function TinyGLRenderingContextCtor(canvas, attribs) {
+	function TinyGLRenderingContextCtor(w, h, attribs) {
+		let canvas = {
+                	width: w,
+                	height: h,
+                	canvas2dRc: new Canvas2DRC(w, h),
+                	getContext(_) {
+                    		return this.canvas2dRc;
+               		},
+            	};
 		this._surface = canvas;
 		this._attribs = attribs || {};
 
@@ -285,14 +325,13 @@
 		this._tgl_ctx = createTGLContext(w, h, this._frame_buf_ptr);
 
 		this._driver = null;
-		if (this._attribs.surfaceDriver != 'webgl') {
-			try {
-				this._driver = new Canvas2DSurfaceDriver(canvas, w, h);
-			} catch (e) {
-			}
+		try {
+			this._driver = new Canvas2DSurfaceDriver(canvas, w, h);
+		} catch (e) {}
+		
+		if (!this._driver) {
+			throw 'Failed to initialize TinyGL with 2D context.';
 		}
-		if (!this._driver)
-			throw 'Failed to initialize TinyGL, neither 2D context nor WebGL context is available.';
 
 		this._temp_matrix_buf_ptr = Module._malloc(16 * BYTES_PER_FLOAT32);
 
@@ -2016,39 +2055,6 @@
 	/**
 	 * Export TinyGL rendering context class
 	 */
-	TinyGLRenderingContext = TinyGLRenderingContextCtor;
+	module.exports = TinyGLRenderingContextCtor;
 
-}
-
-
-/**
- * Replace the default HTMLCanvasElement.prototype.getContext() method with our homemade 
- * implementation, so that a TinyGL rendering context can be fetched using the following 
- * semantics: 
- *
- *   var canvas = document.getElementById(canvas_id);
- *   var gl = canvas.getContext('experimental-tinygl');
- *   ...
- *
- * just as what we do when requiring a canvas2D or a WebGL context. The function call will
- * automatically initialize the TinyGL runtime if it is not initialized yet.
- */
-if ((typeof HTMLCanvasElement) != 'undefined') {
-	try {
-		var default_get_context_func = HTMLCanvasElement.prototype.getContext;
-		HTMLCanvasElement.prototype.getContext = function() {
-			if (arguments[0] == 'experimental-tinygl') {
-				try {
-					// initialize TinyGL runtime if not yet
-					if (!TinyGLRenderingContext)
-						initializeTinyGLRuntime(arguments[1]);
-					return new TinyGLRenderingContext(this, arguments[1]);
-				} catch (e) {
-					return null;
-				}
-			}
-			return default_get_context_func.apply(this, arguments);
-		};
-	} catch (e) {
-	}
 }
