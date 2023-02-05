@@ -259,6 +259,7 @@ function Jc(a){function b(){if(!r.calledRun){r.calledRun=j;Pa||(Pa=j,Ja(La));Ja(
 setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b())}}r.run=r.Ze=Jc;function Kc(a){ja=j;v=Fc;Ja(Na);e(new Ec(a))}r.exit=r.De=Kc;function D(a){a&&(r.print(a),r.U(a));ja=j;e("abort() at "+Ba())}r.abort=r.abort=D;if(r.preInit)for("function"==typeof r.preInit&&(r.preInit=[r.preInit]);0<r.preInit.length;)r.preInit.pop()();var Ic=j;r.noInitialRun&&(Ic=n);Jc();
 
 
+
 	const BYTES_PER_INT8    = 1;
 	const BYTES_PER_UINT8   = 1;
 	const BYTES_PER_INT16   = 2;
@@ -415,8 +416,14 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 		var isClean = false;
 		if (!util_canvas) {
 			isClean = true;
-			if ((typeof document) != 'undefined')
-				util_canvas = document.createElement('canvas');
+			util_canvas = {
+                		width: w,
+                		height: h,
+                		canvas2dRc: new Canvas2DRC(w, h),
+                		getContext(_) {
+                    			return this.canvas2dRc;
+                		},
+            		};
 		}
 
 		if (!util_canvas)
@@ -438,7 +445,7 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 
 		if (!isClean) {
 			var ctx2d = util_canvas.getContext('2d');
-			ctx2d.clearRect(0, 0, width, height);
+			ctx2d.data.fill(0);
 		}
 
 		return util_canvas;
@@ -483,71 +490,35 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 	// IE11 provides a partial implementation of WebGL. For this very browser, some special treatments are required.
 	var is_ie11_compatible = (typeof navigator) != 'undefined' && /Trident\/\d+\.\d+;\s.*rv:(\d+(?:\.\d+)*)/.test(navigator.userAgent);
 
-	function createWebGLProgram(ctx3d, vsrc, fsrc) {
-		var vshader = ctx3d.createShader(ctx3d.VERTEX_SHADER);
-		ctx3d.shaderSource(vshader, vsrc);
-		ctx3d.compileShader(vshader);
-		if (!ctx3d.getShaderParameter(vshader, ctx3d.COMPILE_STATUS)) {
-			debug_output.warn('Vertex shader compilation failed: ' + ctx3d.getShaderInfoLog(vshader));
-			return null;
-		}
-
-		var fshader = ctx3d.createShader(ctx3d.FRAGMENT_SHADER);
-		ctx3d.shaderSource(fshader, fsrc);
-		ctx3d.compileShader(fshader);
-		if (!ctx3d.getShaderParameter(fshader, ctx3d.COMPILE_STATUS)) {
-			debug_output.warn('Fragment shader compilation failed: ' + ctx3d.getShaderInfoLog(fshader));
-			return null;
-		}
-
-		var program = ctx3d.createProgram();
-		ctx3d.attachShader(program, vshader);
-		ctx3d.attachShader(program, fshader);
-		ctx3d.linkProgram(program);
-		if (!ctx3d.getProgramParameter(program, ctx3d.LINK_STATUS)) {
-			debug_output.warn('Program generation failed: ' + ctx3d.getProgramInfoLog(program));
-			return null;
-		}
-
-		var attributes = {};
-		var attrib_count = ctx3d.getProgramParameter(program, ctx3d.ACTIVE_ATTRIBUTES);
-		for (var i=0; i<attrib_count; i++) {
-			var attrib = ctx3d.getActiveAttrib(program, i);
-			attributes[attrib.name] = ctx3d.getAttribLocation(program, attrib.name);
-		}
-
-		var uniforms = {};
-		var uniform_count = ctx3d.getProgramParameter(program, ctx3d.ACTIVE_UNIFORMS);
-		for (var i=0; i<uniform_count; i++) {
-			var uniform = ctx3d.getActiveUniform(program, i);
-			uniforms[uniform.name] = ctx3d.getUniformLocation(program, uniform.name);
-		}
-
-		return {
-			program: program, 
-			attributes: attributes, 
-			uniforms: uniforms
-		};
-	}
-
-	function createWebGLTextureCopyPixels(ctx3d, width, height, pixels) {
-		//ASSERT: (pixels instanceof Uint8Array) || pixels == null
-		//ASSERT: pixels.length == width * height * BYTES_PER_UINT32
-
-		var texture = ctx3d.createTexture();
-		ctx3d.bindTexture(ctx3d.TEXTURE_2D, texture);
-		ctx3d.texImage2D(ctx3d.TEXTURE_2D, 0, ctx3d.RGBA, width, height, 0, ctx3d.RGBA, ctx3d.UNSIGNED_BYTE, pixels);
-		ctx3d.texParameteri(ctx3d.TEXTURE_2D, ctx3d.TEXTURE_MAG_FILTER, ctx3d.NEAREST);
-		ctx3d.texParameteri(ctx3d.TEXTURE_2D, ctx3d.TEXTURE_MIN_FILTER, ctx3d.NEAREST);
-		ctx3d.texParameteri(ctx3d.TEXTURE_2D, ctx3d.TEXTURE_WRAP_S, ctx3d.CLAMP_TO_EDGE);
-		ctx3d.texParameteri(ctx3d.TEXTURE_2D, ctx3d.TEXTURE_WRAP_T, ctx3d.CLAMP_TO_EDGE);
-		return texture;
-	}
-
-
 	/**
 	 * Utility classes
 	 */
+	
+	/**
+    	  * Emulated canvas
+    	  */
+	class Canvas2DRC {
+		constructor(w, h) {
+			this.width = w;
+			this.height = h;
+			this.data = new Uint8Array(w * h * 4);
+			return this;  
+		};
+
+        	createImageData(w, h) {
+			return {
+				width: w,
+		    		height: h,
+				data: new Uint8ClampedArray(w * h * 4)
+			};
+		};
+
+        	putImageData(data) {
+			this.width = data.width;
+			this.height = data.height;
+			this.data = data.data.slice(0);
+		};
+	};
 
 	function Canvas2DSurfaceDriver(canvas, framebuf_width, framebuf_height) {
 		this._canvas = canvas;
@@ -557,7 +528,7 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 		}
 
 		this._img_data = this._ctx2d.createImageData(canvas.width, canvas.height);
-	}
+	};
 
 	Canvas2DSurfaceDriver.prototype = {
 
@@ -590,136 +561,18 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 
 	};
 
-
-	function WebGLSurfaceDriver(canvas, framebuf_width, framebuf_height) {
-		this._canvas = canvas;
-
-		var preferences = {
-			antialias: false, 
-			preserveDrawingBuffer: true
-		};
-		var ctx3d = canvas.getContext('experimental-webgl', preferences) || 
-					canvas.getContext('webgl', preferences);
-		if (!ctx3d) {
-			throw 'WebGLSurfaceDriver constructor failed: cannot get WebGL context.';
-		}
-		this._ctx3d = ctx3d;
-
-		var v_shader = [
-			'#ifdef GL_ES', 
-			'	precision mediump float;', 
-			'#endif', 
-			'', 
-			'attribute vec2 a_position;', 
-			'attribute vec2 a_texCoord;',
-			'varying vec2 v_texCoord;', 
-			'', 
-			'void main(void) {', 
-			'	v_texCoord = a_texCoord;', 
-			'	gl_Position = vec4(a_position, 1.0, 1.0);', 
-			'}'
-		].join('\n');
-		var f_shader = [
-			'#ifdef GL_ES', 
-			'	precision mediump float;', 
-			'#endif', 
-			'', 
-			'uniform sampler2D s_canvasTex;', 
-			'varying vec2 v_texCoord;', 
-			'', 
-			'void main(void) {', 
-			'	vec4 texel = texture2D(s_canvasTex, v_texCoord);', 
-			'	gl_FragColor = vec4(texel.b, texel.g, texel.r, texel.a);', 
-			'}'
-		].join('\n');
-
-		// create program
-		this._program_info = createWebGLProgram(ctx3d, v_shader, f_shader);
-
-		// create canvas rectangle
-		//
-		this._canvas_rect_coords = ctx3d.createBuffer();
-		ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_coords);
-		ctx3d.bufferData(ctx3d.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, 1, 1, -1, 1, -1, -1]), ctx3d.STATIC_DRAW);
-		this._canvas_rect_texcoords = ctx3d.createBuffer();
-		ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_texcoords);
-		ctx3d.bufferData(ctx3d.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0]), ctx3d.STATIC_DRAW);
-		ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, null);
-
-		// create canvas texture with the dimensions of the framebuffer
-		//
-		this._canvas_texture = createWebGLTextureCopyPixels(ctx3d, framebuf_width, framebuf_height, null);
-		ctx3d.bindTexture(ctx3d.TEXTURE_2D, null);
-
-		this._canvas_texture_width = framebuf_width;
-		this._canvas_texture_height = framebuf_height;
-	}
-
-	WebGLSurfaceDriver.prototype = {
-
-		deliver: function(viewport, framebuf) {
-			var ctx3d = this._ctx3d;
-
-			ctx3d.viewport(0, 0, this._canvas.width, this._canvas.height);
-			ctx3d.frontFace(ctx3d.CCW);
-			ctx3d.disable(ctx3d.DEPTH_TEST);
-			ctx3d.depthMask(false);
-
-			ctx3d.useProgram(this._program_info.program);
-
-			var x = -1;
-			var y = 1 - 2 * viewport.H / this._canvas.height;
-			var w = 2 * viewport.W / this._canvas.width;
-			var h = 2 * viewport.H / this._canvas.height;
-
-			// update canvas display with given framebuffer
-			//
-			ctx3d.activeTexture(ctx3d.TEXTURE0);
-			ctx3d.bindTexture(ctx3d.TEXTURE_2D, this._canvas_texture);
-			ctx3d.pixelStorei(ctx3d.UNPACK_FLIP_Y_WEBGL, true);
-			if (this._canvas_texture_width != viewport.W || this._canvas_texture_height != viewport.H) {
-				// recreate canvas texture from the given framebuffer since viewport has changed
-				ctx3d.bindTexture(ctx3d.TEXTURE_2D, null);
-				ctx3d.deleteTexture(this._canvas_texture);
-				this._canvas_texture = createWebGLTextureCopyPixels(ctx3d, viewport.W, viewport.H, framebuf);
-				this._canvas_texture_width  = viewport.W;
-				this._canvas_texture_height = viewport.H;
-			} else {
-				// update texture data with pixels from framebuffer
-				ctx3d.texSubImage2D(ctx3d.TEXTURE_2D, 0, 0, 0, this._canvas_texture_width, this._canvas_texture_height, ctx3d.RGBA, ctx3d.UNSIGNED_BYTE, framebuf);
-			}
-			ctx3d.pixelStorei(ctx3d.UNPACK_FLIP_Y_WEBGL, false);
-			ctx3d.uniform1i(this._program_info.uniforms['s_canvasTex'], 0);
-			ctx3d.enableVertexAttribArray(this._program_info.attributes['a_position']);
-			if (!is_ie11_compatible) {
-				// apply viewport
-				ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_coords);
-				ctx3d.bufferSubData(ctx3d.ARRAY_BUFFER, 0, new Float32Array([x, y, x + w, y, x + w, y + h, x + w, y + h, x, y + h, x, y]));
-			} else {
-				// IE11 does not implement bufferSubData(), so we just recreate the buffer for the viewport rectangle
-				ctx3d.deleteBuffer(this._canvas_rect_coords);
-				this._canvas_rect_coords = ctx3d.createBuffer();
-				ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_coords);
-				ctx3d.bufferData(ctx3d.ARRAY_BUFFER, new Float32Array([x, y, x + w, y, x + w, y + h, x + w, y + h, x, y + h, x, y]), ctx3d.STATIC_DRAW);
-			}
-			ctx3d.vertexAttribPointer(this._program_info.attributes['a_position'], 2, ctx3d.FLOAT, false, 0, 0);
-			ctx3d.enableVertexAttribArray(this._program_info.attributes['a_texCoord']);
-			ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, this._canvas_rect_texcoords);
-			ctx3d.vertexAttribPointer(this._program_info.attributes['a_texCoord'], 2, ctx3d.FLOAT, false, 0, 0);
-			ctx3d.drawArrays(ctx3d.TRIANGLES, 0, 6);
-			ctx3d.bindBuffer(ctx3d.ARRAY_BUFFER, null);
-			ctx3d.bindTexture(ctx3d.TEXTURE_2D, null);
-
-			ctx3d.flush();
-		}
-
-	};
-
-
 	/**
 	 * @class 
 	 */
-	function TinyGLRenderingContextCtor(canvas, attribs) {
+	function TinyGLRenderingContextCtor(w, h, attribs) {
+		let canvas = {
+                	width: w,
+                	height: h,
+                	canvas2dRc: new Canvas2DRC(w, h),
+                	getContext(_) {
+                    		return this.canvas2dRc;
+               		},
+            	};
 		this._surface = canvas;
 		this._attribs = attribs || {};
 
@@ -733,26 +586,12 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 		this._tgl_ctx = createTGLContext(w, h, this._frame_buf_ptr);
 
 		this._driver = null;
-		if (this._attribs.surfaceDriver != 'webgl') {
-			try {
-				this._driver = new Canvas2DSurfaceDriver(canvas, w, h);
-			} catch (e) {
-			}
-		}
+		try {
+			this._driver = new Canvas2DSurfaceDriver(canvas, w, h);
+		} catch (e) {}
+		
 		if (!this._driver) {
-			if (this._attribs.surfaceDriver == '2d')
-				throw 'Failed to initialize TinyGL with 2D context.';
-
-			try {
-				this._driver = new WebGLSurfaceDriver(canvas, w, h);
-			} catch (e) {
-			}
-		}
-		if (!this._driver) {
-			if (this._attribs.surfaceDriver == 'webgl')
-				throw 'Failed to initialize TinyGL with WebGL context.';
-			else
-				throw 'Failed to initialize TinyGL, neither 2D context nor WebGL context is available.';
+			throw 'Failed to initialize TinyGL with 2D context.';
 		}
 
 		this._temp_matrix_buf_ptr = Module._malloc(16 * BYTES_PER_FLOAT32);
@@ -2477,39 +2316,8 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
 	/**
 	 * Export TinyGL rendering context class
 	 */
-	TinyGLRenderingContext = TinyGLRenderingContextCtor;
+	module.exports = TinyGLRenderingContextCtor;
 
-}
+};
 
-
-/**
- * Replace the default HTMLCanvasElement.prototype.getContext() method with our homemade 
- * implementation, so that a TinyGL rendering context can be fetched using the following 
- * semantics: 
- *
- *   var canvas = document.getElementById(canvas_id);
- *   var gl = canvas.getContext('experimental-tinygl');
- *   ...
- *
- * just as what we do when requiring a canvas2D or a WebGL context. The function call will
- * automatically initialize the TinyGL runtime if it is not initialized yet.
- */
-if ((typeof HTMLCanvasElement) != 'undefined') {
-	try {
-		var default_get_context_func = HTMLCanvasElement.prototype.getContext;
-		HTMLCanvasElement.prototype.getContext = function() {
-			if (arguments[0] == 'experimental-tinygl') {
-				try {
-					// initialize TinyGL runtime if not yet
-					if (!TinyGLRenderingContext)
-						initializeTinyGLRuntime(arguments[1]);
-					return new TinyGLRenderingContext(this, arguments[1]);
-				} catch (e) {
-					return null;
-				}
-			}
-			return default_get_context_func.apply(this, arguments);
-		};
-	} catch (e) {
-	}
-}
+ initializeTinyGLRuntime();
