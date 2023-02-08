@@ -1,7 +1,7 @@
 TinyGL.js
 =========
 
-TinyGL.js is a JavaScript library providing a tiny subset of OpenGL 1.1 compatible API, which can be used to make 3D graphics on canvas. TinyGL.js is based upon TinyGL's implementation written in C and compiled to JavaScript via Emscripten. It only uses software rasterization and does not require WebGL to run.
+TinyGL.js is a JavaScript library providing a tiny subset of OpenGL 1.1 compatible API, which can be used to make 3D graphics on canvas. TinyGL.js is based upon TinyGL's implementation written in C and compiled to JavaScript via Emscripten. It only uses software rasterization and does not require WebGL to run, therefore possible to use in Scriptable.
 
 Current implementation is based on an enhanced and bug-fixed branch of TinyGL 0.4.
 
@@ -10,15 +10,14 @@ Getting Started
 
 This library is in a single JavaScript source file `tinygl.js`. It should be included first:
 
-```html
-<script type="text/javascript" src="tinygl.js"></script>
+```js
+const createCtx = importModule("TinyGL");
 ```
 
 Then, assuming a canvas element is already declared in the HTML, we get TinyGL.js's rendering context using the keyword `experimental-tinygl`:
 
 ```js
-var canvas = document.getElementById(canvas_id);
-var gl = canvas.getContext('experimental-tinygl');
+var gl = createCtx(1024, 768);
 ```
 
 The semantics is almost the same with what we do for a Canvas2D or WebGL context. Now that we have the rendering context, let's begin with some basic primitives:
@@ -60,10 +59,10 @@ Examples
 
 [more ...](https://github.com/humu2009/tinygl.js/wiki/Examples)
 
-Browser Requirements
+Environment Requirements
 --------------------
 
-TinyGL.js depends on [Canvas](http://caniuse.com/#feat=canvas) and  [Typed Arrays](http://caniuse.com/#feat=typedarrays). Make sure your browser supports these features to run codes with TinyGL.js.
+TinyGL.js (This one) depends on [Typed Arrays](http://caniuse.com/#feat=typedarrays). Make sure your environment supports these features to run codes with TinyGL.js.
 
 Known Issues
 ------------
