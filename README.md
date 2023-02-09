@@ -14,7 +14,7 @@ This library is in a single JavaScript source file `tinygl.js`. It should be inc
 const createCtx = importModule("TinyGL");
 ```
 
-Then, assuming a canvas element is already declared in the HTML, we get TinyGL.js's rendering context using the keyword `experimental-tinygl`:
+Then, we create a new TinyGL context with the parameters being width and height:
 
 ```js
 var gl = createCtx(1024, 768);
