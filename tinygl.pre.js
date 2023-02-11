@@ -51,18 +51,19 @@
 /**
  * @preserve
  * var TinyGLRenderingContext;
-*/
+ */
 
-var DEBUG = false;
+var DEBUG = true;
 
 function initializeTinyGLRuntime(options) {
-
 	// define a console for message output
 	var debug_output = (typeof console) != 'undefined' ? console : {
 		info:  function() {}, 
 		warn:  function() {}, 
 		error: function() {}
 	};
+	
+	const print = console.log.bind(console);
 
 	/*
 	 * Parse options
@@ -102,4 +103,3 @@ function initializeTinyGLRuntime(options) {
 		// default to 32M heap memory following Emscripten's suggestion
 		Module.TOTAL_MEMORY = 32 * 1024 * 1024;
 	}
-
