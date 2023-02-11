@@ -53,7 +53,7 @@
  * var TinyGLRenderingContext;
  */
 
-var DEBUG = true;
+var DEBUG = false;
 
 function initializeTinyGLRuntime(options) {
 	// define a console for message output
