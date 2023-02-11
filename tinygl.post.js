@@ -226,8 +226,8 @@
           };
       }
       
-      // Safari 10 is slow with Uint8Array#subarray
-      function fastSubarray(begin, end) {
+      // Safari 10 is slow with Uint8Array#subarray, and Sciptable too uses JSC 
+      Uint8Array.prototype.subarray = function fastSubarray(begin, end) {
         var len = this.byteLength;
         begin = (begin|0) || 0;
         end = end === (void 0) ? len : (end|0);
@@ -243,9 +243,6 @@
         var length = Math.min(len - begin, end - begin);
         return new Uint8Array(this.buffer, begin, length);
       };
-  
-      // IE11 provides a partial implementation of WebGL. For this very browser, some special treatments are required.
-      var is_ie11_compatible = (typeof navigator) != 'undefined' && /Trident\/\d+\.\d+;\s.*rv:(\d+(?:\.\d+)*)/.test(navigator.userAgent);
   
       /**
        * Utility classes
@@ -2026,7 +2023,7 @@
   
           swapBuffers: function() {
               var frame_buf_size = this._frame_buf_width * this._frame_buf_height * BYTES_PER_UINT32;
-              var frame_buf = fastSubarray.bind(Module.HEAPU8)(this._frame_buf_ptr, this._frame_buf_ptr + frame_buf_size);
+              var frame_buf = Module.HEAPU8.subarray(this._frame_buf_ptr, this._frame_buf_ptr + frame_buf_size);
               this._driver.deliver(this._vp, frame_buf);
           }
   
