@@ -53,7 +53,7 @@
  * var TinyGLRenderingContext;
  */
 
-var DEBUG = false;
+var DEBUG = true;
 
 function initializeTinyGLRuntime(options) {
 	// define a console for message output
@@ -2286,18 +2286,8 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
   
           swapBuffers: function() {
               var frame_buf_size = this._frame_buf_width * this._frame_buf_height * BYTES_PER_UINT32;
-	      var start;
-	      if(DEBUG)
-		      start = Date.now();
               var frame_buf = Module.HEAPU8.subarray(this._frame_buf_ptr, this._frame_buf_ptr + frame_buf_size);
-	      if(DEBUG)
-		      console.log('Subarray took ' + (Date.now() - start).toString() + 'ms');
-              if(DEBUG)
-		      start = Date.now();
               this._driver.deliver(this._vp, frame_buf);
-	      if(DEBUG)
-		  console.log('Deliver took ' + (Date.now() - start).toString() + 'ms');
-		
           }
   
       };
