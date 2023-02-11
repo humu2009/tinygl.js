@@ -62,6 +62,8 @@ function initializeTinyGLRuntime(options) {
 		warn:  function() {}, 
 		error: function() {}
 	};
+	
+	const print = console.log.bind(console);
 
 	/*
 	 * Parse options
