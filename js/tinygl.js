@@ -1889,10 +1889,9 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
                   /*
                    * Signature 2: 
                    *
-                   *   texImage2D(target, level, components, format, type, domElement/imageData)
+                   *   texImage2D(target, level, components, format, type, imageData)
                    * 
-                   * where domElement can be either <img>, <video> or <canvas>. 
-                   * If the last parameter is given as an ImageData, it is expected to have (or 
+                   * where imageData is expected to have (or 
                    * be compatible with) the following structure:
                    * 
                    *   ImageData {
@@ -1904,49 +1903,9 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
                    * where data array should have a size of at least 4 * width * height.
                    */
   
-                  var domElement = arguments[5];
-                  var elem_type = '';
-                  if ((typeof Image) != 'undefined' && (domElement instanceof HTMLImageElement)) {
-                      elem_type = 'image';
-                  } else if ((typeof HTMLVideoElement) != 'undefined' && (domElement instanceof HTMLVideoElement)) {
-                      elem_type = 'video';
-                  } else if ((typeof DrawContext) != 'undefined' && (domElement instanceof HTMLCanvasElement)) {
-                      elem_type = 'canvas';
-                  } else if ((typeof domElement.width) == 'number' && (typeof domElement.height) == 'number' && 
-                             domElement.data && (typeof domElement.data.length) == 'number') {
-                      if (domElement.data.length < 4 * domElement.width * domElement.height) {
-                          debug_output.warn('Insufficient data for texImage2D()');
-                          return;
-                      }
-                      elem_type = 'ImageData';
-                  }
+                  var data = arguments[5];
   
-                  var imgData = null;
-                  switch (elem_type) {
-                  case 'image':
-                  case 'video':
-                      var cv = getUtilCanvas(domElement.width, domElement.height, true);
-                      var ctx2d = cv.getContext('2d');
-                      try {
-                          ctx2d.drawImage(domElement, 0, 0, cv.width, cv.height);
-                      } catch (e) {
-                      }
-                      imgData = ctx2d.getImageData(0, 0, cv.width, cv.height);
-                      break;
-                  case 'canvas':
-                      var ctx2d = domElement.getContext('2d');
-                      //TODO: shall we also resample the canvas input?
-                      imgData = ctx2d.getImageData(0, 0, domElement.width, domElement.height);
-                      break;
-                  case 'ImageData':
-                      imgData = domElement;
-                      break;
-                  default:
-                      debug_output.warn('Unacceptable inputs for texImage2D()');
-                      return;
-                  }
-  
-                  var pixels = imgData.data;
+                  var pixels = data.data;
                   if (this._attribs.flipTextureY || this._pixelStoreFlipY)
                       flipPixelsY(pixels, 4/* RGBA */ * imgData.width);
   
@@ -2334,4 +2293,3 @@ setTimeout(function(){setTimeout(function(){r.setStatus("")},1);ja||b()},1)):b()
   };
   
    module.exports = initializeTinyGLRuntime();
-  
