@@ -53,17 +53,18 @@
  * var TinyGLRenderingContext;
  */
 
-var DEBUG = true;
-
 function initializeTinyGLRuntime(options) {
+
+	// guarantee TinyGL runtime be initialized only once
+	if (TinyGLRenderingContext)
+		return;
+
 	// define a console for message output
 	var debug_output = (typeof console) != 'undefined' ? console : {
 		info:  function() {}, 
 		warn:  function() {}, 
 		error: function() {}
 	};
-	
-	const print = console.log.bind(console);
 
 	/*
 	 * Parse options
