@@ -225,24 +225,9 @@
               h: Math.min(ymax0, ymax1) - ymin
           };
       }
-      
-      // Safari 10 is slow with Uint8Array#subarray, and Sciptable too uses JSC 
-      Uint8Array.prototype.subarray = function fastSubarray(begin, end) {
-        var len = this.byteLength;
-        begin = (begin|0) || 0;
-        end = end === (void 0) ? len : (end|0);
-
-        // Handle negative values.
-        if (begin < 0) begin = Math.max(begin + len, 0);
-        if (end < 0) end = Math.max(end + len, 0);
-
-        if (len === 0 || begin >= len || begin >= end) {
-          return new ArrayBuffer(0);
-        }
-
-        var length = Math.min(len - begin, end - begin);
-        return new Uint8Array(this.buffer, begin, length);
-      };
+  
+      // IE11 provides a partial implementation of WebGL. For this very browser, some special treatments are required.
+      var is_ie11_compatible = (typeof navigator) != 'undefined' && /Trident\/\d+\.\d+;\s.*rv:(\d+(?:\.\d+)*)/.test(navigator.userAgent);
   
       /**
        * Utility classes
@@ -2023,18 +2008,8 @@
   
           swapBuffers: function() {
               var frame_buf_size = this._frame_buf_width * this._frame_buf_height * BYTES_PER_UINT32;
-	      var start;
-	      if(DEBUG)
-		      start = Date.now();
               var frame_buf = Module.HEAPU8.subarray(this._frame_buf_ptr, this._frame_buf_ptr + frame_buf_size);
-	      if(DEBUG)
-		      console.log('Subarray took ' + (Date.now() - start).toString() + 'ms');
-              if(DEBUG)
-		      start = Date.now();
               this._driver.deliver(this._vp, frame_buf);
-	      if(DEBUG)
-		  console.log('Deliver took ' + (Date.now() - start).toString() + 'ms');
-		
           }
   
       };
@@ -2052,4 +2027,3 @@
   };
   
    module.exports = initializeTinyGLRuntime();
-  
